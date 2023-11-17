@@ -51,11 +51,11 @@ pub fn App() -> impl IntoView {
                     view! {
                       <div class="panel">
                         <div class="panel-heading py-2">{format!("Guest {}", i + 1)}</div>
-                        <div class="panel-block is-flex-direction-column">
+                        // <div class="panel-block is-flex-direction-column">
 
-                          <TicketForm ticket=*gv/>
+                        <TicketForm ticket=*gv/>
 
-                        </div>
+                        // </div>
                         <div class="panel-block is-justify-content-flex-end">
                           <IconButton on_click=move |()| set_guests.tracked_remove(uid) icon=FaTrashSolid>
                             Remove Guest
@@ -78,12 +78,12 @@ pub fn App() -> impl IntoView {
             <div class="panel-heading py-2">
               <span>About You</span>
             </div>
-            <div class="panel-block">
+            // <div class="panel-block">
 
-              <TicketForm ticket=booker/>
-              <EmailField/>
+            <EmailField/>
+            <TicketForm ticket=booker/>
 
-            </div>
+          // </div>
 
           </div>
 
@@ -151,11 +151,21 @@ pub fn TicketForm(ticket: RwSignal<Ticket>) -> impl IntoView {
     let set_reqs = move |new| ticket.update(|g| g.dietry_requirements = new);
 
     view! {
+      <div class="pt-3"></div>
       <NameField get=name set=set_name/>
       <TicketTypeField get=tt set=set_tt/>
-      <CheckboxField label="Vegetarian" get=veg set=set_veg/>
-      <CheckboxField label="Gluten Free" get=gf set=set_gf/>
-      <TextField label="Other" get=reqs set=set_reqs/>
+
+      <div class="field is-horizontal">
+        <div class="field-label">
+          <label class="label">Dietary Requirements</label>
+        </div>
+
+        <div class="field-body is-flex-direction-column">
+          <CheckboxField label="Vegetarian" get=veg set=set_veg/>
+          <CheckboxField label="Gluten Free" get=gf set=set_gf/>
+          <TextField placeholder="Other (please specify)" get=reqs set=set_reqs/>
+        </div>
+      </div>
     }
 }
 
@@ -166,11 +176,11 @@ pub fn CheckboxField(
     #[prop(into)] set: Callback<bool>,
 ) -> impl IntoView {
     view! {
-      <div class="field">
+      <div class="field is-horizontal">
         <div class="control">
           <label class="checkbox">
             <input type="checkbox" prop:checked=move || get() on:change=move |ev| set(event_target_checked(&ev))/>
-            {label}
+            {format!(" {} ", label)}
           </label>
         </div>
       </div>
@@ -180,6 +190,7 @@ pub fn CheckboxField(
 #[component]
 pub fn TextField(
     #[prop(into, optional)] label: Option<String>,
+    #[prop(into, optional)] placeholder: Option<String>,
     #[prop(into)] get: MaybeSignal<String>,
     #[prop(into)] set: Callback<String>,
     #[prop(into, optional)] icon: Option<FaIcon>,
@@ -197,12 +208,12 @@ pub fn TextField(
     });
 
     view! {
-      <div class="field">
+      <div class="field is-horizontal">
         {label_view} <div class="control" class:has-icons-left=icon_view.is_some()>
           <input
             class="input"
             type="text"
-            placeholder="Joe Bloggs"
+            placeholder=placeholder
             prop:value=get
             on:change=move |ev| set(event_target_value(&ev))
           />
