@@ -1,4 +1,5 @@
 use rust_decimal::Decimal;
+use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub struct TicketType {
@@ -29,14 +30,40 @@ impl IntoIterator for TicketTypes {
 }
 
 #[derive(Clone, Debug)]
+pub struct Event {
+    pub id: String,
+    pub name: String,
+    pub tagline: String,
+    pub ticket_types: TicketTypes,
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct Booking {
-    pub booker: Ticket,
-    pub guests: Vec<Ticket>,
+    pub id: String,
+    pub name: String,
+    pub email: String,
+    pub event_id: String,
+}
+
+impl Booking {
+    pub fn new<T, U, V>(name: T, email: U, event_id: V) -> Self
+    where
+        T: Into<String>,
+        U: Into<String>,
+        V: Into<String>,
+    {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            name: name.into(),
+            email: email.into(),
+            event_id: event_id.into(),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct Ticket {
-    pub name: String,
+    pub booking_id: String,
     pub ticket_type: TicketType,
     pub vegetarian: bool,
     pub gluten_free: bool,
@@ -44,10 +71,10 @@ pub struct Ticket {
 }
 
 impl Ticket {
-    pub fn new(name: &str, ticket_type: TicketType) -> Self {
+    pub fn new(booking_id: String, tt: TicketType) -> Self {
         Self {
-            name: name.into(),
-            ticket_type,
+            booking_id: booking_id,
+            ticket_type: tt,
             vegetarian: false,
             gluten_free: false,
             dietry_requirements: "".into(),

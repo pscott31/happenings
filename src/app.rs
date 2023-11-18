@@ -10,9 +10,8 @@ use leptos_icons::{FaIcon, Icon};
 use rust_decimal_macros::dec;
 use uuid::Uuid;
 
-#[component]
-pub fn App() -> impl IntoView {
-    let TEST_TICKET_TYPES: [TicketType; 2] = [
+fn test_event() -> Event {
+    let ticket_types: [TicketType; 2] = [
         TicketType {
             name: "Adult".into(),
             price: dec!(25.00),
@@ -23,27 +22,40 @@ pub fn App() -> impl IntoView {
         },
     ];
 
-    let (ticket_types, _set_ticket_types) = create_signal(TicketTypes::new(TEST_TICKET_TYPES));
+    Event {
+        id: "xmas2023".into(),
+        name: "Little Stukeley Christmas Dinner".into(),
+        tagline: "Get your tickets for the final village event of the year!".into(),
+        ticket_types: TicketTypes::new(ticket_types),
+    }
+}
+
+#[component]
+pub fn App() -> impl IntoView {
+    let event = store_value(test_event());
+    let default_ticket_type = event().ticket_types.standard().unwrap();
+
+    let raw_booking = Booking::new("", "", event().id);
+    let first_ticket = Ticket::new(raw_booking.id.clone(), default_ticket_type);
+    // let raw_tickets = IndexMap::new()
+    let mut raw_tickets = ReactiveList::<Ticket>::new();
+    raw_tickets.insert(Uuid::new_v4(), create_rw_signal(first_ticket));
+
+    let (booking, set_booking) = create_signal::<Booking>(raw_booking);
+    // let (event, set_event) = create_signal(raw_event);
+
+    let ticket_types = Signal::derive(move || event().ticket_types.clone());
     provide_context(ticket_types);
 
-    let g1 = Ticket::new(
-        "Main Booker Person",
-        ticket_types.get_untracked().standard().unwrap(),
-    );
-    let booker = create_rw_signal::<Ticket>(g1);
+    // let (booking, set_booking) = create_signal::<Booking>(Booking::new("", "", event().id));
 
-    let (guests, set_guests) = create_signal::<ReactiveList<Ticket>>(IndexMap::new());
-    set_guests.tracked_push(Ticket::new(
-        "Joe Bloggs",
-        ticket_types.get_untracked().find("Adult").unwrap(),
-    ));
-    set_guests.tracked_push(Ticket::new(
-        "Jane Bloggs",
-        ticket_types.get_untracked().find("Child").unwrap(),
-    ));
+    let name = Signal::derive(move || booking().name);
+    let set_name = move |new| set_booking.update(|b| b.name = new);
+
+    let (tickets, set_tickets) = create_signal::<ReactiveList<Ticket>>(IndexMap::new());
 
     let badgers = move || {
-        guests.with(|gl| {
+        tickets.with(|gl| {
             log!("recomuting badger");
             gl.iter()
                 .enumerate()
@@ -57,7 +69,7 @@ pub fn App() -> impl IntoView {
 
                         // </div>
                         <div class="panel-block is-justify-content-flex-end">
-                          <IconButton on_click=move |()| set_guests.tracked_remove(uid) icon=FaTrashSolid>
+                          <IconButton on_click=move |()| set_tickets.tracked_remove(uid) icon=FaTrashSolid>
                             Remove Guest
                           </IconButton>
                         </div>
@@ -67,6 +79,29 @@ pub fn App() -> impl IntoView {
                 .collect_view()
         })
     };
+
+    // let add_ticket = move |_| {
+    //     set_tickets.tracked_push(Ticket::new(
+    //         booking().id.clone(),
+    //         ticket_types().standard().unwrap(),
+    //         // ticket_types.get().standard().unwrap(),
+    //         // TicketType {
+    //         //     name: "Child".into(),
+    //         //     price: dec!(15.00),
+    //         // },
+    //         //
+    //         // ticket_types().standard().unwrap(),
+    //     ))
+    // };
+
+    // This is fine
+    let (signal, _) = create_signal::<i32>(1);
+    let callback1 = Callback::<()>::from(move |_| log!("{}", signal()));
+
+    // But this doesn't work:
+    //  trait bound `(dyn std::ops::Fn() -> i32 + 'static): callback::NotRawCallback` is not satisfied
+    let derived = Signal::derive(move || signal() + 1);
+    let callback2 = Callback::<()>::from(move |_| log!("{}", derived()));
 
     view! {
       <section class="section">
@@ -78,35 +113,28 @@ pub fn App() -> impl IntoView {
             <div class="panel-heading py-2">
               <span>About You</span>
             </div>
-            // <div class="panel-block">
-
+            <NameField get=name set=set_name/>
             <EmailField/>
-            <TicketForm ticket=booker/>
-
-          // </div>
-
           </div>
 
           {badgers}
 
-          <IconButton
-            icon=FaPlusSolid
-            color=Color::Primary
-            on_click=move |_| set_guests.tracked_push(Ticket::new("New Guest", ticket_types().standard().unwrap()))
-          >
-            "Add Guest"
-          </IconButton>
+        // <IconButton icon=FaPlusSolid color=Color::Primary on_click=add_ticket>
+        // on_click=move |_| {
+        // set_tickets.tracked_push(Ticket::new("booking().id".into(), ticket_types().standard().unwrap()))
+        // }
+        // "Add Ticket"
+        // </IconButton>
         </div>
 
-        <BookingSummary booker=booker guests=guests/>
       </section>
     }
 }
-
+// <BookingSummary booking=booking tickets=tickets/>
 #[component]
 pub fn BookingSummary(
-    #[prop(into)] booker: Signal<Ticket>,
-    #[prop(into)] guests: Signal<IndexMap<Uuid, RwSignal<Ticket>>>,
+    #[prop(into)] booking: Signal<Ticket>,
+    #[prop(into)] tickets: Signal<IndexMap<Uuid, RwSignal<Ticket>>>,
 ) -> impl IntoView
 where
 {
@@ -114,8 +142,8 @@ where
       <section>
         <div>
           <h2 class="title">Booking Summary</h2>
-          <TicketSummary ticket=booker/>
-          <For each=move || guests.get() key=|(k, _)| *k let:item>
+          <TicketSummary ticket=booking/>
+          <For each=move || tickets.get() key=|(k, _)| *k let:item>
             <p>{move || item.0.to_string()}</p>
             <TicketSummary ticket=item.1/>
           </For>
@@ -127,7 +155,6 @@ where
 #[component]
 pub fn TicketSummary(#[prop(into)] ticket: Signal<Ticket>) -> impl IntoView {
     view! {
-      <p>{move || ticket().name}</p>
       <p>{move || ticket().ticket_type.name}</p>
       <p>{move || ticket().vegetarian}</p>
     }
@@ -137,9 +164,6 @@ pub fn TicketSummary(#[prop(into)] ticket: Signal<Ticket>) -> impl IntoView {
 pub fn TicketForm(ticket: RwSignal<Ticket>) -> impl IntoView {
     let tt = Signal::derive(move || ticket().ticket_type);
     let set_tt = move |new| ticket.update(|g| g.ticket_type = new);
-
-    let name = Signal::derive(move || ticket().name);
-    let set_name = move |new| ticket.update(|g| g.name = new);
 
     let veg = Signal::derive(move || ticket().vegetarian);
     let set_veg = move |new| ticket.update(|g| g.vegetarian = new);
@@ -152,7 +176,6 @@ pub fn TicketForm(ticket: RwSignal<Ticket>) -> impl IntoView {
 
     view! {
       <div class="pt-3"></div>
-      <NameField get=name set=set_name/>
       <TicketTypeField get=tt set=set_tt/>
 
       <div class="field is-horizontal">
