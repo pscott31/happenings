@@ -37,20 +37,18 @@ pub fn App() -> impl IntoView {
 
     let raw_booking = Booking::new("", "", event().id);
     let first_ticket = Ticket::new(raw_booking.id.clone(), default_ticket_type);
-    // let raw_tickets = IndexMap::new()
     let mut raw_tickets = ReactiveList::<Ticket>::new();
     raw_tickets.insert(Uuid::new_v4(), create_rw_signal(first_ticket));
 
     let (booking, set_booking) = create_signal::<Booking>(raw_booking);
-    // let (event, set_event) = create_signal(raw_event);
-
-    let ticket_types = Signal::derive(move || event().ticket_types.clone());
+    let ticket_types = store_value(event().ticket_types);
     provide_context(ticket_types);
-
-    // let (booking, set_booking) = create_signal::<Booking>(Booking::new("", "", event().id));
 
     let name = Signal::derive(move || booking().name);
     let set_name = move |new| set_booking.update(|b| b.name = new);
+
+    let email = Signal::derive(move || booking().email);
+    let set_email = move |new| set_booking.update(|b| b.email = new);
 
     let (tickets, set_tickets) = create_signal::<ReactiveList<Ticket>>(IndexMap::new());
 
@@ -80,28 +78,12 @@ pub fn App() -> impl IntoView {
         })
     };
 
-    // let add_ticket = move |_| {
-    //     set_tickets.tracked_push(Ticket::new(
-    //         booking().id.clone(),
-    //         ticket_types().standard().unwrap(),
-    //         // ticket_types.get().standard().unwrap(),
-    //         // TicketType {
-    //         //     name: "Child".into(),
-    //         //     price: dec!(15.00),
-    //         // },
-    //         //
-    //         // ticket_types().standard().unwrap(),
-    //     ))
-    // };
-
-    // This is fine
-    let (signal, _) = create_signal::<i32>(1);
-    let callback1 = Callback::<()>::from(move |_| log!("{}", signal()));
-
-    // But this doesn't work:
-    //  trait bound `(dyn std::ops::Fn() -> i32 + 'static): callback::NotRawCallback` is not satisfied
-    let derived = Signal::derive(move || signal() + 1);
-    let callback2 = Callback::<()>::from(move |_| log!("{}", derived()));
+    let add_ticket = move |_| {
+        set_tickets.tracked_push(Ticket::new(
+            booking().id.clone(),
+            ticket_types().standard().unwrap(),
+        ))
+    };
 
     view! {
       <section class="section">
@@ -109,31 +91,28 @@ pub fn App() -> impl IntoView {
           <h1 class="title">Little Stukeley Christmas Dinner</h1>
           <p class="subtitle">Get your tickets for the final village event of the year!</p>
 
-          <div class="panel">
-            <div class="panel-heading py-2">
-              <span>About You</span>
-            </div>
+          <div class="box">
             <NameField get=name set=set_name/>
-            <EmailField/>
+            <EmailField get=email set=set_email/>
           </div>
 
           {badgers}
 
-        // <IconButton icon=FaPlusSolid color=Color::Primary on_click=add_ticket>
-        // on_click=move |_| {
-        // set_tickets.tracked_push(Ticket::new("booking().id".into(), ticket_types().standard().unwrap()))
-        // }
-        // "Add Ticket"
-        // </IconButton>
+          <IconButton icon=FaPlusSolid color=Color::Primary on_click=add_ticket>
+            // on_click=move |_| {
+            // set_tickets.tracked_push(Ticket::new("booking().id".into(), ticket_types().standard().unwrap()))
+            // }
+            "Add Ticket"
+          </IconButton>
         </div>
-
+        <BookingSummary booking=booking tickets=tickets/>
       </section>
     }
 }
-// <BookingSummary booking=booking tickets=tickets/>
+
 #[component]
 pub fn BookingSummary(
-    #[prop(into)] booking: Signal<Ticket>,
+    #[prop(into)] booking: Signal<Booking>,
     #[prop(into)] tickets: Signal<IndexMap<Uuid, RwSignal<Ticket>>>,
 ) -> impl IntoView
 where
@@ -142,7 +121,8 @@ where
       <section>
         <div>
           <h2 class="title">Booking Summary</h2>
-          <TicketSummary ticket=booking/>
+          <p>Booking Name: {move || booking().name}</p>
+          <p>Booking Email: {move || booking().email}</p>
           <For each=move || tickets.get() key=|(k, _)| *k let:item>
             <p>{move || item.0.to_string()}</p>
             <TicketSummary ticket=item.1/>

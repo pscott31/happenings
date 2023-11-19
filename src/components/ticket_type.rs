@@ -7,10 +7,9 @@ pub fn TicketTypeField(
     #[prop(into)] get: Signal<TicketType>,
     #[prop(into)] set: Callback<TicketType>,
 ) -> impl IntoView {
-    let ticket_types = use_context::<ReadSignal<TicketTypes>>().expect("there to be ticket types");
+    let ticket_types = use_context::<StoredValue<TicketTypes>>().expect("there to be ticket types");
 
-    let options = ticket_types
-        .get_untracked()
+    let options = ticket_types()
         .clone()
         .into_iter()
         .map(|tt| {

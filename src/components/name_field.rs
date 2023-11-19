@@ -12,17 +12,19 @@ pub fn NameField(
           <label class="label">Name</label>
         </div>
         <div class="field-body">
-          <div class="control has-icons-left">
-            <input
-              class="input"
-              type="text"
-              placeholder="Joe Bloggs"
-              prop:value=get
-              on:change=move |ev| set(event_target_value(&ev))
-            />
-            <span class="icon is-small is-left">
-              <Icon icon=Icon::from(FaEnvelopeSolid)/>
-            </span>
+          <div class="field">
+            <div class="control has-icons-left">
+              <input
+                class="input"
+                type="text"
+                placeholder="Joe Bloggs"
+                prop:value=get
+                on:change=move |ev| set(event_target_value(&ev))
+              />
+              <span class="icon is-small is-left">
+                <Icon icon=Icon::from(FaEnvelopeSolid)/>
+              </span>
+            </div>
           </div>
         </div>
       </div>
