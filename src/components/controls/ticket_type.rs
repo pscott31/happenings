@@ -3,7 +3,7 @@ use leptos::logging::*;
 use leptos::*;
 
 #[component]
-pub fn TicketTypeField(
+pub fn TicketType(
     #[prop(into)] get: Signal<TicketType>,
     #[prop(into)] set: Callback<TicketType>,
 ) -> impl IntoView {
@@ -27,17 +27,12 @@ pub fn TicketTypeField(
         .collect_view();
 
     view! {
-      <div class="field is-horizontal">
-        <div class="field-label">
-          <label class="label">Ticket Type</label>
-        </div>
-        <div class="field-body">
-          <div class="select">
-            <select on:change=move |ev| {
-                log!("{}", event_target_value(& ev));
-                ticket_types().find(event_target_value(&ev)).and_then(|tt| Some(set(tt)));
-            }>{options}</select>
-          </div>
+      <div class="control">
+        <div class="select">
+          <select on:change=move |ev| {
+              log!("{}", event_target_value(& ev));
+              ticket_types().find(event_target_value(&ev)).and_then(|tt| Some(set(tt)));
+          }>{options}</select>
         </div>
       </div>
     }

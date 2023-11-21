@@ -5,6 +5,8 @@ use uuid::Uuid;
 pub struct TicketType {
     pub name: String,
     pub price: Decimal,
+    pub square_item_id: String,
+    pub square_catalog_version: i64,
 }
 
 #[derive(Clone, Debug)]
@@ -42,6 +44,7 @@ pub struct Booking {
     pub id: String,
     pub name: String,
     pub email: String,
+    pub phone_no: String,
     pub event_id: String,
 }
 
@@ -57,6 +60,7 @@ impl Booking {
             name: name.into(),
             email: email.into(),
             event_id: event_id.into(),
+            phone_no: "".into(),
         }
     }
 }

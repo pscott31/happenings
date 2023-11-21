@@ -1,12 +1,13 @@
+use crate::components::controls::*;
 use crate::components::*;
 use crate::model::*;
 use crate::reactive_list::*;
+// use crate::utils::OptionalMaybeSignal;
 
 use indexmap::IndexMap;
 use leptos::logging::*;
 use leptos::*;
 use leptos_icons::FaIcon::*;
-use leptos_icons::{FaIcon, Icon};
 use rust_decimal_macros::dec;
 use uuid::Uuid;
 
@@ -15,10 +16,14 @@ fn test_event() -> Event {
         TicketType {
             name: "Adult".into(),
             price: dec!(25.00),
+            square_item_id: "726AQUKD776RI3W7NQIK3AVZ".into(),
+            square_catalog_version: 1700477397626,
         },
         TicketType {
             name: "Child".into(),
             price: dec!(15.00),
+            square_item_id: "A2PZMGOAICINGRLJPAYLVSUY".into(),
+            square_catalog_version: 1700477397626,
         },
     ];
 
@@ -50,66 +55,220 @@ pub fn App() -> impl IntoView {
     let email = Signal::derive(move || booking().email);
     let set_email = move |new| set_booking.update(|b| b.email = new);
 
+    let phone_no = Signal::derive(move || booking().phone_no);
+    let set_phone_no = move |new| set_booking.update(|b| b.phone_no = new);
+
     let (tickets, set_tickets) = create_signal::<ReactiveList<Ticket>>(IndexMap::new());
+
+    let (modal_active, set_modal_active) = create_signal::<bool>(false);
 
     let badgers = move || {
         tickets.with(|gl| {
             log!("recomuting badger");
             gl.iter()
                 .enumerate()
-                .map(|(i, (&uid, gv))| {
+                .map(|(i, (&uid, &gv))| {
                     view! {
-                      <div class="panel">
-                        <div class="panel-heading py-2">{format!("Guest {}", i + 1)}</div>
-                        // <div class="panel-block is-flex-direction-column">
+                      <Field label=move || {
+                          view! {
+                            "Ticket "
+                            {i + 1}
 
-                        <TicketForm ticket=*gv/>
-
-                        // </div>
-                        <div class="panel-block is-justify-content-flex-end">
-                          <IconButton on_click=move |()| set_tickets.tracked_remove(uid) icon=FaTrashSolid>
-                            Remove Guest
-                          </IconButton>
-                        </div>
-                      </div>
+                            <IconButton on_click=move || set_tickets.tracked_remove(uid) icon=FaTrashSolid>
+                              Remove
+                            </IconButton>
+                          }
+                      }>
+                        <TicketControl ticket=gv/>
+                      </Field>
                     }
                 })
                 .collect_view()
         })
     };
 
-    let add_ticket = move |_| {
-        set_tickets.tracked_push(Ticket::new(
-            booking().id.clone(),
-            ticket_types().standard().unwrap(),
-        ))
+    let add_ticket = move || {
+        set_tickets
+            .tracked_push(Ticket::new(booking().id.clone(), ticket_types().standard().unwrap()))
     };
 
+    async fn gen_pay_link(
+        booking: &Booking,
+        tickets: &ReactiveList<Ticket>,
+    ) -> Result<String, reqwest::Error> {
+        // ) -> String {
+        let client = reqwest::Client::new();
+        let res =
+            client
+                .post("https://connect.squareupsandbox.com/v2/online-checkout/payment-links")
+                .body(
+                    r#"{
+            "order": {
+              "location_id": "L7CEWJ6XCDC38",
+              "line_items": [
+                {
+                  "quantity": "1",
+                  "catalog_version": 1700477397626,
+                  "catalog_object_id": "VF54IAUH3FRNQMNE7T43ZXUB"
+                }
+              ]
+            },
+            "idempotency_key": "1689b61e-8e03-45b5-b882-11e6b916f3a0",
+            "description": "Your Xmas Dinner 2023 Tickers"
+          }"#,
+                )
+                .send()
+                .await?
+                .text()
+                .await?;
+
+        // match res {
+        //     Ok(resp) => format! {"ok! {:?}", resp},
+        //     Err(e) => format! {"ok! {:?}", e},
+        // }
+        Ok(res)
+    }
+
+    let link_action =
+        create_action(move |_: &()| {
+            let booking = booking().to_owned();
+            let tickets = tickets().to_owned();
+            async move {
+                // todo!()
+                gen_pay_link(&booking, &tickets).await
+            }
+        });
+
+    // async fn arse(_: &()) -> Result<String, String> { Ok("yay".into()) }
+
+    // let link_action = create_action::<O=() F=()>(|_| async { return Ok(()) });w
+    //move |()| {
+    //|booking: Booking, tickets: ReactiveList<Ticket>| {
+    // `task` is given as `&String` because its value is available in `input`
+    // gen_pay_link(booking(), tickets())
+    // arse()
+    // });
+
+    // the most recent returned result
+    let result_of_call =
+        move || {
+            link_action.value().with(|x| match x {
+                None => view! { "no result yet" }.into_view(),
+                // Some(stuff) => view! { {format!("{}", stuff)} }.into_view(),
+                Some(Err(err)) => view! { {format!("{}", err)} }.into_view(),
+                Some(Ok(res)) => view! { {format!("{:?}", res)} }.into_view(),
+            })
+        };
+    // whether the call is pending
+    let pending = link_action.pending();
+
+    // let todger = link_action.dispatch(());
+    let git_paid = move || link_action.dispatch(());
+    // let git_paid = move || log!("yay");
     view! {
       <section class="section">
         <div class="container">
           <h1 class="title">Little Stukeley Christmas Dinner</h1>
+          <h1>result {result_of_call}</h1>
+          <h1>pending {pending}</h1>
           <p class="subtitle">Get your tickets for the final village event of the year!</p>
 
           <div class="box">
-            <NameField get=name set=set_name/>
-            <EmailField get=email set=set_email/>
+            <Field label=|| "Booking Contact">
+              <Name get=name set=set_name/>
+              <Email get=email set=set_email/>
+            </Field>
+            <Field>
+              <TelNoControl get=phone_no set=set_phone_no/>
+            </Field>
+            {badgers}
+
+            <div class="field is-grouped">
+              <p class="control">
+                <IconButton icon=FaPlusSolid color=Color::Secondary on_click=add_ticket>
+
+                  "Add Ticket"
+                </IconButton>
+              </p>
+              <IconButton icon=FaPlusSolid color=Color::Primary on_click=move || set_modal_active(true)>
+                "See summary"
+              </IconButton>
+
+              <IconButton icon=FaPlusSolid color=Color::Primary on_click=move || link_action.dispatch(())>
+                // move || link_action.dispatch(())
+                "Proceed to Payment"
+              </IconButton>
+
+              <p class="control"></p>
+            </div>
           </div>
-
-          {badgers}
-
-          <IconButton icon=FaPlusSolid color=Color::Primary on_click=add_ticket>
-            // on_click=move |_| {
-            // set_tickets.tracked_push(Ticket::new("booking().id".into(), ticket_types().standard().unwrap()))
-            // }
-            "Add Ticket"
-          </IconButton>
         </div>
-        <BookingSummary booking=booking tickets=tickets/>
+
+        <div>modal here? {modal_active}</div>
+        <Modal
+          active=modal_active
+          set_active=set_modal_active
+          title="Booking Summary"
+          footer=move || {
+              view! {
+                <button class="button is-success">Save changes</button>
+                <button class="button">Cancel</button>
+              }
+          }
+        >
+
+          <BookingSummary booking=booking tickets=tickets/>
+        </Modal>
       </section>
     }
 }
 
+#[component]
+pub fn TelNoControl(
+    #[prop(into)] get: MaybeSignal<String>,
+    #[prop(into)] set: Callback<String>,
+) -> impl IntoView {
+    let on_change = move |ev: leptos::ev::Event| set(event_target_value(&ev));
+    view! {
+      <p class="control is-expanded">
+        <input class="input" type="tel" placeholder="Phone number (optional)" prop:value=get on:change=on_change/>
+      </p>
+    }
+}
+// TODO
+// enum ViewOrString{
+//   v(ViewFn)
+//   s(String)
+// }
+#[component]
+// pub fn HFormField<F, IV>(children: Children, #[prop(optional)] label: F) -> impl IntoView
+pub fn Field(children: Children, #[prop(optional, into)] label: ViewFn) -> impl IntoView
+where
+    // F: Fn() -> IV,
+    // IV: IntoView + 'static,
+{
+    let children = children()
+        .nodes
+        .into_iter()
+        .map(|child| {
+            view! { <div class="field">{child}</div> }
+        })
+        .collect_view();
+
+    // let label = label.and_then(
+    //   move |label|     view!{      <label class="label">{label}</label>{/view}}
+    // )
+
+    view! {
+      <div class="field is-horizontal">
+        <div class="field-label is-normal">
+
+          <label class="label">{label.run()}</label>
+        </div>
+        <div class="field-body">{children}</div>
+      </div>
+    }
+}
 #[component]
 pub fn BookingSummary(
     #[prop(into)] booking: Signal<Booking>,
@@ -117,112 +276,75 @@ pub fn BookingSummary(
 ) -> impl IntoView
 where
 {
+    let total = move || {
+        tickets()
+            .values()
+            .fold(dec!(0), |a, t| a + t().ticket_type.price)
+    };
     view! {
-      <section>
-        <div>
-          <h2 class="title">Booking Summary</h2>
-          <p>Booking Name: {move || booking().name}</p>
-          <p>Booking Email: {move || booking().email}</p>
-          <For each=move || tickets.get() key=|(k, _)| *k let:item>
-            <p>{move || item.0.to_string()}</p>
-            <TicketSummary ticket=item.1/>
-          </For>
-        </div>
-      </section>
+      <table class="table is-fullwidth">
+        <tr>
+          <th>Booked By</th>
+          <th>Email</th>
+          <th>Tel</th>
+        </tr>
+        <tr>
+          <td>{move || booking().name}</td>
+          <td>{move || booking().email}</td>
+          <td>{move || booking().phone_no}</td>
+        </tr>
+      </table>
+      <p>Tickets</p>
+      <p>Booking Email:</p>
+
+      <table class="table is-fullwidth">
+        <tr>
+          <th>Type</th>
+          <th>Notes</th>
+          <th>Price</th>
+        </tr>
+
+        <For each=move || tickets.get() key=|(k, _)| *k let:item>
+          <TicketSummary ticket=item.1/>
+        </For>
+
+        <tfoot>
+          <th></th>
+          <th>Total</th>
+          <th>{move || format!("{:.2}", total())}</th>
+        </tfoot>
+      </table>
     }
 }
 
 #[component]
 pub fn TicketSummary(#[prop(into)] ticket: Signal<Ticket>) -> impl IntoView {
+    let options = move || {
+        vec![
+            ticket().vegetarian.then_some("vegetarian".to_string()),
+            ticket().gluten_free.then_some("gluten free".to_string()),
+            if ticket().dietry_requirements.is_empty() {
+                None
+            } else {
+                Some(ticket().dietry_requirements)
+            },
+        ]
+        .into_iter()
+        .filter_map(|o| o)
+        .collect::<Vec<_>>()
+        .join(", ")
+    };
+
+    let ticket_type = move || ticket().ticket_type.name;
+    let ticket_price = move || ticket().ticket_type.price;
+
+    // <p>{move || item.0.to_string()}</p> --!>
     view! {
-      <p>{move || ticket().ticket_type.name}</p>
-      <p>{move || ticket().vegetarian}</p>
-    }
-}
-
-#[component]
-pub fn TicketForm(ticket: RwSignal<Ticket>) -> impl IntoView {
-    let tt = Signal::derive(move || ticket().ticket_type);
-    let set_tt = move |new| ticket.update(|g| g.ticket_type = new);
-
-    let veg = Signal::derive(move || ticket().vegetarian);
-    let set_veg = move |new| ticket.update(|g| g.vegetarian = new);
-
-    let gf = Signal::derive(move || ticket().gluten_free);
-    let set_gf = move |new| ticket.update(|g| g.gluten_free = new);
-
-    let reqs = Signal::derive(move || ticket().dietry_requirements);
-    let set_reqs = move |new| ticket.update(|g| g.dietry_requirements = new);
-
-    view! {
-      <div class="pt-3"></div>
-      <TicketTypeField get=tt set=set_tt/>
-
-      <div class="field is-horizontal">
-        <div class="field-label">
-          <label class="label">Dietary Requirements</label>
-        </div>
-
-        <div class="field-body is-flex-direction-column">
-          <CheckboxField label="Vegetarian" get=veg set=set_veg/>
-          <CheckboxField label="Gluten Free" get=gf set=set_gf/>
-          <TextField placeholder="Other (please specify)" get=reqs set=set_reqs/>
-        </div>
-      </div>
-    }
-}
-
-#[component]
-pub fn CheckboxField(
-    #[prop(into)] label: String,
-    #[prop(into)] get: Signal<bool>,
-    #[prop(into)] set: Callback<bool>,
-) -> impl IntoView {
-    view! {
-      <div class="field is-horizontal">
-        <div class="control">
-          <label class="checkbox">
-            <input type="checkbox" prop:checked=move || get() on:change=move |ev| set(event_target_checked(&ev))/>
-            {format!(" {} ", label)}
-          </label>
-        </div>
-      </div>
-    }
-}
-
-#[component]
-pub fn TextField(
-    #[prop(into, optional)] label: Option<String>,
-    #[prop(into, optional)] placeholder: Option<String>,
-    #[prop(into)] get: MaybeSignal<String>,
-    #[prop(into)] set: Callback<String>,
-    #[prop(into, optional)] icon: Option<FaIcon>,
-) -> impl IntoView {
-    let icon_view = icon.map(|i| {
-        view! {
-          <span class=format!("icon is-small is-left")>
-            <Icon icon=Icon::from(i)/>
-          </span>
-        }
-    });
-
-    let label_view = label.map(|l| {
-        view! { <label class="label">{l}</label> }
-    });
-
-    view! {
-      <div class="field is-horizontal">
-        {label_view} <div class="control" class:has-icons-left=icon_view.is_some()>
-          <input
-            class="input"
-            type="text"
-            placeholder=placeholder
-            prop:value=get
-            on:change=move |ev| set(event_target_value(&ev))
-          />
-          {icon_view}
-        </div>
-      </div>
+      <tr>
+        <td>{ticket_type}</td>
+        <td>{options}</td>
+        <td>{move || ticket_price().to_string()}</td>
+      </tr>
     }
 }
 

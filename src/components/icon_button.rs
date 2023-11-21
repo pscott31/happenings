@@ -61,14 +61,19 @@ impl Display for Size {
 }
 
 #[component]
-pub fn IconButton(
-    #[prop(into)] on_click: Callback<()>,
+pub fn IconButton<F>(
+    // todo this should work
+    // #[prop(into)] on_click: Callback<()>,
+    on_click: F,
     #[prop(into, optional)] icon: Option<FaIcon>,
     #[prop(into, optional)] color: Color,
     #[prop(into, optional)] size: Size,
     #[prop(into, optional)] class: OptionalMaybeSignal<String>,
     children: Children,
-) -> impl IntoView {
+) -> impl IntoView
+where
+    F: Fn() + 'static,
+{
     let icon_view = icon.map(|i| {
         view! {
           <span class=format!("icon {}", size)>
@@ -78,7 +83,7 @@ pub fn IconButton(
     });
 
     view! {
-      <button class=format!("button {} {}", color, class.or_default().get()) on:click=move |_| on_click(())>
+      <button class=format!("button {} {}", color, class.or_default().get()) on:click=move |_| on_click()>
         {icon_view}
         <span>{children()}</span>
       </button>

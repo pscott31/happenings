@@ -1,10 +1,7 @@
-mod email_field;
+pub mod controls;
 mod icon_button;
-mod name_field;
-mod ticket_type;
+mod modal;
 
-pub use email_field::*;
 pub use icon_button::*;
-pub use name_field::*;
-pub use ticket_type::*;
+pub use modal::*;
 
