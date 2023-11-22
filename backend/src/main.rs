@@ -1,14 +1,15 @@
-use std::{sync::mpsc, thread};
-
 use app::*;
+use async_signals::Signals;
 use axum::{routing::post, Router};
 use dotenv::dotenv;
 use fileserv::file_and_error_handler;
+use futures_util::StreamExt;
 use leptos::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
-use log::{info, warn, LevelFilter};
-use nix::sys::signal::Signal;
-use signal_hook::{consts::SIGINT, iterator::Signals};
+use log::*;
+use nix::{libc, sys::signal::Signal};
+use std::thread;
+use tokio::sync::mpsc;
 
 pub mod fileserv;
 
@@ -38,28 +39,31 @@ async fn main() {
     log::info!("listening on http://{}", &addr);
 
     // Channel for graceful shutdown
-    let (tx, rx) = mpsc::channel();
-    let mut signals = Signals::new(&[SIGINT]).unwrap();
+    let (tx, mut rx) = mpsc::channel(100);
+    let mut signals = Signals::new(vec![libc::SIGINT]).unwrap();
 
-    thread::spawn(move || {
-        for sig_num in signals.forever() {
+    tokio::spawn(async move {
+        while let Some(sig_num) = signals.next().await {
             let signal_name = Signal::try_from(sig_num)
                 .map(|s| format!("{:?}", s))
                 .unwrap_or_else(|_| format!("unknown signal({})", sig_num));
 
             info!("received {:?}", signal_name);
-            tx.send(()).unwrap();
+            tx.send(()).await.unwrap();
         }
+        error!("failed to receive signal");
     });
+
     let server = axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(async {
-            match rx.recv() {
-                Ok(_) => info!("starting graceful shutdown"),
-                Err(err) => warn!("error on shutdown channel: {:?}", err),
+            while let Some(_) = rx.recv().await {
+                info!("starting graceful shutdown");
+                return;
             }
         });
 
+    log::info!("serving!");
     if let Err(e) = server.await {
         log::error!("server error: {}", e);
     }
