@@ -18,3 +18,5 @@
  tower-http.workspace = true
  log.workspace = true
 dotenv = "0.15.0"
+signal-hook = "0.3.17"
+nix = { version = "0.27.1", features = ["signal"] }

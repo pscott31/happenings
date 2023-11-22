@@ -31,9 +31,9 @@
  thiserror.workspace = true
  serde = "1.0.193"
  sanitizer = "0.1.6"
-log.workspace = true
-validator = { version = "0.16.1", features = ["derive", "phone"] }
-phonenumber = "0.3.3"
+ log.workspace = true
+ validator = { version = "0.16.1", features = ["derive", "phone"] }
+ phonenumber = "0.3.3"
 
 
 [features]

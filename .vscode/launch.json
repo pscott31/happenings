@@ -2,11 +2,31 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "chrome",
+            "type": "lldb",
             "request": "launch",
-            "name": "Launch Chrome",
-            "url": "http://localhost:4001",
-            "webRoot": "${workspaceFolder}"
+            "name": "Run Backend",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--package=backend",
+                    "--bin=backend",
+                    "--no-default-features"
+                ]
+            },
+            "console": "internalConsole",
+            "initCommands": [
+                "process handle SIGINT -p true --stop false"
+            ],
+            "env": {
+                "LEPTOS_OUTPUT_NAME": "happenings",
+                "LEPTOS_SITE_ROOT": "target/site",
+                "LEPTOS_SITE_PKG_DIR": "pkg",
+                "LEPTOS_SITE_ADDR": "127.0.0.1:3000",
+                "LEPTOS_RELOAD_PORT": "3001",
+                "LEPTOS_LIB_DIR": "frontend",
+                "LEPTOS_BIN_DIR": "backend",
+                "LEPTOS_WATCH": "ON"
+            },
         }
     ]
 }
