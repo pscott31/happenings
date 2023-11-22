@@ -19,7 +19,7 @@ pub fn App() -> impl IntoView {
       <Stylesheet id="leptos" href="/pkg/happenings.css"/>
 
       // sets the document title
-      <Title text="Welcome to Leptos"/>
+      <Title text="Stukeley Happenings"/>
 
       // content for this welcome page
       <Router>
