@@ -31,7 +31,7 @@ pub fn TicketType(
         <div class="select">
           <select on:change=move |ev| {
               log!("{}", event_target_value(& ev));
-              ticket_types().find(event_target_value(&ev)).and_then(|tt| Some(set(tt)));
+              ticket_types().find(event_target_value(&ev)).map(set);
           }>{options}</select>
         </div>
       </div>

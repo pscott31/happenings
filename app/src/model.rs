@@ -25,7 +25,7 @@ impl TicketTypes {
         self.0.into_iter().find(|tt| tt.name == tt_name)
     }
 
-    pub fn standard(&self) -> Option<TicketType> { self.0.get(0).map(|x| x.clone()) }
+    pub fn standard(&self) -> Option<TicketType> { self.0.first().cloned() }
 }
 
 impl IntoIterator for TicketTypes {
@@ -111,7 +111,7 @@ pub struct Ticket {
 impl Ticket {
     pub fn new(booking_id: String, tt: TicketType) -> Self {
         Self {
-            booking_id: booking_id,
+            booking_id,
             ticket_type: tt,
             vegetarian: false,
             gluten_free: false,

@@ -9,7 +9,7 @@ pub fn Checkbox(
     view! {
       <div class="control">
         <label class="checkbox">
-          <input type="checkbox" prop:checked=move || get() on:change=move |ev| set(event_target_checked(&ev))/>
+          <input type="checkbox" prop:checked=get on:change=move |ev| set(event_target_checked(&ev))/>
           {format!(" {} ", label)}
         </label>
       </div>

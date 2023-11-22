@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-use std::env;
-
 use log::*;
 
 use crate::components::controls::*;
@@ -8,12 +5,10 @@ use crate::components::*;
 use crate::model::*;
 use crate::reactive_list::*;
 use crate::server_fns::create_payment_link;
-use crate::square_api;
 
 use leptos::*;
 use leptos_icons::FaIcon::*;
 use rust_decimal_macros::dec;
-use sanitizer::prelude::*;
 use uuid::Uuid;
 use validator::Validate;
 
@@ -105,8 +100,8 @@ pub fn NewBooking() -> impl IntoView {
             .collect::<Vec<_>>();
         let new_booking = NewBooking {
             event_id: event().id,
-            contact: contact,
-            tickets: tickets,
+            contact,
+            tickets,
         };
         async move { create_payment_link(new_booking).await }
     });
@@ -184,7 +179,7 @@ pub fn NewBooking() -> impl IntoView {
             Terribly sorry about that. Could you please let me (Phil Scott) know and tell me what it says below and I will get it sorted
           </div>
           <div class="block">
-            <pre style="white-space: pre-wrap;">{move || error_data()}</pre>
+            <pre style="white-space: pre-wrap;">{error_data}</pre>
           </div>
         </Modal>
 

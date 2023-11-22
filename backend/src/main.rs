@@ -8,7 +8,6 @@ use leptos::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
 use log::*;
 use nix::{libc, sys::signal::Signal};
-use std::thread;
 use tokio::sync::mpsc;
 
 pub mod fileserv;
@@ -57,9 +56,9 @@ async fn main() {
     let server = axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(async {
-            while let Some(_) = rx.recv().await {
-                info!("starting graceful shutdown");
-                return;
+            match rx.recv().await {
+                Some(_) => info!("starting graceful shutdown"),
+                None => error!("graceful shutdown channel failed, shutting down"),
             }
         });
 

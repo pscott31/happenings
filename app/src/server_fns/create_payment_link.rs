@@ -1,16 +1,15 @@
-use std::collections::HashMap;
-use std::env;
-
-use log::*;
+use leptos::*;
 
 use crate::model::*;
-use crate::square_api;
-
-use leptos::*;
-use sanitizer::prelude::*;
 
 #[server(PaymentLink, "/api")]
 pub async fn create_payment_link(booking: NewBooking) -> Result<String, ServerFnError> {
+    use crate::square_api;
+    use log::*;
+    use sanitizer::prelude::*;
+    use std::collections::HashMap;
+    use std::env;
+
     info!("adding booking: {:?}", booking);
 
     let endpoint = env::var("SQUARE_ENDPOINT").expect("Error: SQUARE_API_KEY variable not found");
@@ -43,7 +42,7 @@ pub async fn create_payment_link(booking: NewBooking) -> Result<String, ServerFn
             .iter()
             .map(|t| square_api::NewLineItem {
                 quantity: "1".to_string(),
-                catalog_version: catalog_version, //todo: t.ticket_type.square_catalog_version,
+                catalog_version, //todo: t.ticket_type.square_catalog_version,
                 catalog_object_id: item_id.clone(), //todo: t.ticket_type.square_item_id.clone(),
                 dietary_requirements: HashMap::from([
                     ("gluten_free".to_string(), t.gluten_free.to_string()),
@@ -61,8 +60,8 @@ pub async fn create_payment_link(booking: NewBooking) -> Result<String, ServerFn
             description: "Little Stukeley Christmas Dinner".to_string(),
             order: square_api::NewOrder {
                 customer_id: Some(customer_id),
-                location_id: location_id,
-                line_items: line_items,
+                location_id,
+                line_items,
             },
             checkout_options: Some(square_api::CheckoutOptions {
                 allow_tipping: false,
