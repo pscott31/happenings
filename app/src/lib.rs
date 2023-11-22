@@ -7,6 +7,7 @@ pub mod error_template;
 pub mod model;
 mod pages;
 pub mod reactive_list;
+pub mod server_fns;
 pub mod square_api;
 pub mod utils;
 

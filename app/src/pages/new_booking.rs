@@ -7,6 +7,7 @@ use crate::components::controls::*;
 use crate::components::*;
 use crate::model::*;
 use crate::reactive_list::*;
+use crate::server_fns::create_payment_link;
 use crate::square_api;
 
 use leptos::*;
@@ -17,20 +18,12 @@ use uuid::Uuid;
 use validator::Validate;
 
 fn test_event() -> Event {
-    let ticket_types: [TicketType; 1] = [
-        TicketType {
-            name: "Adult".into(),
-            price: dec!(15.00),
-            square_item_id: "VF54IAUH3FRNQMNE7T43ZXUB".into(),
-            square_catalog_version: 1700477397626,
-        },
-        // TicketType {
-        //     name: "Child".into(),
-        //     price: dec!(15.00),
-        //     square_item_id: "A2PZMGOAICINGRLJPAYLVSUY".into(),
-        //     square_catalog_version: 1700477397626,
-        // },
-    ];
+    let ticket_types: [TicketType; 1] = [TicketType {
+        name: "Adult".into(),
+        price: dec!(15.00),
+        square_item_id: "VF54IAUH3FRNQMNE7T43ZXUB".into(),
+        square_catalog_version: 1700477397626,
+    }];
 
     Event {
         id: "xmas2023".into(),
@@ -38,106 +31,6 @@ fn test_event() -> Event {
         tagline: "Get your tickets for the final village event of the year!".into(),
         ticket_types: TicketTypes::new(ticket_types),
     }
-}
-
-#[server(PaymentLink, "/api")]
-pub async fn add_todo(booking: NewBooking) -> Result<String, ServerFnError> {
-    info!("adding booking: {:?}", booking);
-
-    let endpoint = env::var("SQUARE_ENDPOINT").expect("Error: SQUARE_API_KEY variable not found");
-    let api_key = env::var("SQUARE_API_KEY").expect("Error: SQUARE_API_KEY variable not found");
-
-    let location_id =
-        env::var("SQUARE_LOCATION_ID").expect("Error: SQUARE_LOCATION_ID variable not found");
-
-    let item_id = env::var("SQUARE_ITEM_ID").expect("Error: SQUARE_LOCATION_ID variable not found");
-
-    let catalog_version = env::var("SQUARE_CATALOG_VERSION")
-        .expect("Error: SQUARE_CATALOG_VERSION variable not found");
-    let catalog_version = catalog_version.parse::<i64>()?;
-    let resp = {
-        let client = reqwest::Client::new();
-
-        let mut sanitizer = StringSanitizer::from(booking.contact.name.clone());
-        sanitizer.trim().to_snake_case();
-        let customer_id = sanitizer.get();
-
-        let phone_number = booking
-            .contact
-            .phone_number()?
-            .format()
-            .mode(phonenumber::Mode::E164)
-            .to_string();
-
-        let line_items = booking
-            .tickets
-            .iter()
-            .map(|t| square_api::NewLineItem {
-                quantity: "1".to_string(),
-                catalog_version: catalog_version, //todo: t.ticket_type.square_catalog_version,
-                catalog_object_id: item_id.clone(), //todo: t.ticket_type.square_item_id.clone(),
-                dietary_requirements: HashMap::from([
-                    ("gluten_free".to_string(), t.gluten_free.to_string()),
-                    ("vegeterrible".to_string(), t.vegetarian.to_string()),
-                    (
-                        "dietary_requirements".to_string(),
-                        t.dietary_requirements.clone(),
-                    ),
-                ]),
-            })
-            .collect::<Vec<_>>();
-
-        let req = square_api::CreatePaymentLinkRequest {
-            idempotency_key: uuid::Uuid::new_v4().to_string(),
-            description: "Little Stukeley Christmas Dinner".to_string(),
-            order: square_api::NewOrder {
-                customer_id: Some(customer_id),
-                location_id: location_id,
-                line_items: line_items,
-            },
-            checkout_options: Some(square_api::CheckoutOptions {
-                allow_tipping: false,
-                ask_for_shipping_address: false,
-                enable_coupon: false,
-                enable_loyalty: false,
-            }),
-            pre_populated_data: Some(square_api::PrePopulatedData {
-                buyer_address: None,
-                buyer_email: Some(booking.contact.email),
-                buyer_phone_number: Some(phone_number),
-            }),
-        };
-        let req = client
-            .post(format!(
-                "https://{}/v2/online-checkout/payment-links",
-                endpoint
-            ))
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .header(
-                reqwest::header::AUTHORIZATION,
-                format!("Bearer {}", api_key),
-            )
-            .json(&req);
-
-        info!("request: {:?}", req);
-
-        let res = req.send().await.map_err(|e| {
-            warn!("failed to call square api: {}", e);
-            e
-        })?;
-
-        if res.status().is_success() {
-            let parsed_res = res.json::<square_api::Welcome>().await?;
-            return Ok(parsed_res.payment_link.long_url);
-        }
-
-        let error_body = res.text().await?;
-        Err(ServerFnError::ServerError(error_body))
-    };
-    if let Err(e) = resp.as_ref() {
-        warn!("error generating payment link: {}", e.to_string())
-    };
-    resp
 }
 
 #[component]
@@ -163,7 +56,6 @@ pub fn NewBooking() -> impl IntoView {
     let phone_no = Signal::derive(move || booking_contact().phone_no);
     let set_phone_no = move |new| set_booking_contact.update(|b| b.phone_no = new);
 
-    // let (tickets, set_tickets) = create_signal::<ReactiveList<Ticket>>(IndexMap::new());
     let (tickets, set_tickets) = create_signal::<ReactiveList<Ticket>>(raw_tickets);
 
     let (error_seen, set_error_seen) = create_signal::<usize>(0);
@@ -216,11 +108,7 @@ pub fn NewBooking() -> impl IntoView {
             contact: contact,
             tickets: tickets,
         };
-        async move {
-            // todo!()
-            // gen_pay_link(&booking, &tickets).await
-            add_todo(new_booking).await
-        }
+        async move { create_payment_link(new_booking).await }
     });
 
     let error_data = move || {
@@ -243,8 +131,6 @@ pub fn NewBooking() -> impl IntoView {
 
     let validation = move || booking_contact().validate();
     let is_invalid = Signal::derive(move || validation().is_err());
-
-    // whether the call is pending
     let pending = link_action.pending();
 
     view! {
@@ -259,15 +145,14 @@ pub fn NewBooking() -> impl IntoView {
               <Email get=email set=set_email/>
             </Field>
             <Field>
-              <TelNoControl get=phone_no set=set_phone_no/>
+              <PhoneNumber get=phone_no set=set_phone_no/>
             </Field>
             {badgers}
 
             <div class="field is-grouped">
               <p class="control">
                 <IconButton icon=FaPlusSolid color=Color::Secondary on_click=add_ticket>
-
-                  "Add Ticket"
+                  "Add another ticket to your booking"
                 </IconButton>
               </p>
 
@@ -304,62 +189,6 @@ pub fn NewBooking() -> impl IntoView {
         </Modal>
 
       </section>
-    }
-}
-
-#[component]
-pub fn TelNoControl(
-    #[prop(into)] get: Signal<String>,
-    #[prop(into)] set: Callback<String>,
-) -> impl IntoView {
-    let on_change = move |ev: leptos::ev::Event| set(event_target_value(&ev));
-
-    let is_valid = move || {
-        get.with(
-            |s| match phonenumber::parse(Some(phonenumber::country::Id::GB), s) {
-                Ok(pn) => pn.is_valid(),
-                Err(_) => false,
-            },
-        )
-    };
-
-    let error_msg = move || {
-        (!is_valid())
-            .then_some(view! { <p class="help is-danger">Please enter a valid phone number</p> })
-    };
-
-    // let is_valid = Signal::derive(move || {
-
-    // });
-
-    view! {
-      <p class="control is-expanded">
-        <input class="input" type="tel" placeholder="Phone number (optional)" prop:value=get on:change=on_change/>
-      </p>
-      <div>{error_msg}</div>
-    }
-}
-
-#[component]
-pub fn Field(children: Children, #[prop(optional, into)] label: ViewFn) -> impl IntoView
-where
-{
-    let children = children()
-        .nodes
-        .into_iter()
-        .map(|child| {
-            view! { <div class="field">{child}</div> }
-        })
-        .collect_view();
-
-    view! {
-      <div class="field is-horizontal">
-        <div class="field-label is-normal">
-
-          <label class="label">{label.run()}</label>
-        </div>
-        <div class="field-body">{children}</div>
-      </div>
     }
 }
 
