@@ -4,7 +4,7 @@ use crate::components::controls::*;
 use crate::components::*;
 use crate::model::*;
 use crate::reactive_list::*;
-use crate::server_fns::create_payment_link;
+use crate::server_fns::{create_order, create_payment_link};
 
 use leptos::*;
 use leptos_icons::FaIcon::*;
@@ -92,18 +92,27 @@ pub fn NewBooking() -> impl IntoView {
         ))
     };
 
-    let link_action = create_action(move |_: &()| {
+    let build_booking = move || {
         let contact = booking_contact().to_owned();
         let tickets = tickets()
             .iter()
             .map(|(_, t)| t().to_owned())
             .collect::<Vec<_>>();
-        let new_booking = NewBooking {
+        NewBooking {
             event_id: event().id,
             contact,
             tickets,
-        };
+        }
+    };
+
+    let link_action = create_action(move |_: &()| {
+        let new_booking = build_booking();
         async move { create_payment_link(new_booking).await }
+    });
+
+    let create_order = create_action(move |_: &()| {
+        let new_booking = build_booking();
+        async move { create_order(new_booking).await }
     });
 
     let error_data = move || {
@@ -158,6 +167,15 @@ pub fn NewBooking() -> impl IntoView {
                 on_click=move || link_action.dispatch(())
               >
                 {move || { if pending() { "Generating Link..." } else { "Proceed to Payment" } }}
+              </IconButton>
+
+              <IconButton
+                disabled=is_invalid
+                icon=FaPlusSolid
+                color=Color::Primary
+                on_click=move || create_order.dispatch(())
+              >
+                {move || { if pending() { "Creating Order..." } else { "Create Order without Paying" } }}
               </IconButton>
 
               <p class="control"></p>

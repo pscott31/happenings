@@ -42,6 +42,17 @@ pub struct CreatePaymentLinkRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct CreateOrderRequest {
+    pub idempotency_key: String,
+    pub order: NewOrder,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateOrderResponse {
+    pub order: Order,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NewOrder {
     pub location_id: String,
     pub customer_id: Option<String>,
