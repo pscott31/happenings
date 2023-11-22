@@ -46,6 +46,7 @@ fn test_event() -> Event {
 pub async fn add_todo(booking: NewBooking) -> Result<String, ServerFnError> {
     info!("adding booking: {:?}", booking);
 
+    let endpoint = env::var("SQUARE_ENDPOINT").expect("Error: SQUARE_API_KEY variable not found");
     let api_key = env::var("SQUARE_API_KEY").expect("Error: SQUARE_API_KEY variable not found");
 
     let location_id =
@@ -108,20 +109,24 @@ pub async fn add_todo(booking: NewBooking) -> Result<String, ServerFnError> {
                 buyer_phone_number: Some(phone_number),
             }),
         };
-        let res = client
-            .post("https://connect.squareupsandbox.com/v2/online-checkout/payment-links")
+        let req = client
+            .post(format!(
+                "https://{}/v2/online-checkout/payment-links",
+                endpoint
+            ))
             .header(reqwest::header::CONTENT_TYPE, "application/json")
             .header(
                 reqwest::header::AUTHORIZATION,
                 format!("Bearer {}", api_key),
             )
-            .json(&req)
-            .send()
-            .await
-            .map_err(|e| {
-                warn!("failed to call square api: {}", e);
-                e
-            })?;
+            .json(&req);
+
+        info!("request: {:?}", req);
+
+        let res = req.send().await.map_err(|e| {
+            warn!("failed to call square api: {}", e);
+            e
+        })?;
 
         if res.status().is_success() {
             let parsed_res = res.json::<square_api::Welcome>().await?;
