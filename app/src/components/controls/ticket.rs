@@ -13,8 +13,8 @@ pub fn TicketControl(ticket: RwSignal<Ticket>) -> impl IntoView {
     let gf = Signal::derive(move || ticket().gluten_free);
     let set_gf = move |new| ticket.update(|g| g.gluten_free = new);
 
-    let reqs = Signal::derive(move || ticket().dietry_requirements);
-    let set_reqs = move |new| ticket.update(|g| g.dietry_requirements = new);
+    let reqs = Signal::derive(move || ticket().dietary_requirements);
+    let set_reqs = move |new| ticket.update(|g| g.dietary_requirements = new);
 
     view! {
       <TicketType get=tt set=set_tt/>

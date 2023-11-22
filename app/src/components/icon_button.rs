@@ -69,7 +69,8 @@ pub fn IconButton<F>(
     #[prop(into, optional)] color: Color,
     #[prop(into, optional)] size: Size,
     #[prop(into, optional)] class: OptionalMaybeSignal<String>,
-    children: Children,
+    #[prop(optional)] children: Option<Children>,
+    #[prop(into, optional)] disabled: OptionalMaybeSignal<bool>,
 ) -> impl IntoView
 where
     F: Fn() + 'static,
@@ -83,9 +84,13 @@ where
     });
 
     view! {
-      <button class=format!("button {} {}", color, class.or_default().get()) on:click=move |_| on_click()>
+      <button
+        disabled=move || disabled.or_default().get()
+        class=format!("button {} {}", color, class.or_default().get())
+        on:click=move |_| on_click()
+      >
         {icon_view}
-        <span>{children()}</span>
+        {children.map(|x| view! { <span>{x()}</span> })}
       </button>
     }
 }

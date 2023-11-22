@@ -1,16 +1,4 @@
-mod components;
-pub mod error_template;
-mod model;
-mod reactive_list;
-mod utils;
-
 use app::*;
-use leptos::*;
-
-pub mod app;
-pub mod fileserv;
-
-use crate::app::*;
 use leptos::*;
 use wasm_bindgen::prelude::wasm_bindgen;
 
