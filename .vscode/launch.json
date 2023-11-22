@@ -5,14 +5,8 @@
             "type": "lldb",
             "request": "launch",
             "name": "Run Backend",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--package=backend",
-                    "--bin=backend",
-                    "--no-default-features"
-                ]
-            },
+            "preLaunchTask": "cargo leptos build",
+            "program": "${workspaceFolder}/target/debug/backend",
             "console": "internalConsole",
             "initCommands": [
                 "process handle SIGINT -p true --stop false"

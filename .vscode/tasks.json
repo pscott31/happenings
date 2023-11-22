@@ -1,0 +1,21 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "cargo leptos build",
+            "command": "cargo",
+            "type": "shell",
+            "args": [
+                "leptos",
+                "build"
+            ],
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "presentation": {
+                "reveal": "silent"
+            },
+            "group": "build"
+        }
+    ]
+}
