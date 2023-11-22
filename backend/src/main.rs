@@ -4,7 +4,7 @@ use dotenv::dotenv;
 use fileserv::file_and_error_handler;
 use leptos::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
-use log::{debug, error, info, warn, LevelFilter};
+use log::{info, LevelFilter};
 
 pub mod fileserv;
 

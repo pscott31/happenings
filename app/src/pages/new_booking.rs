@@ -8,9 +8,7 @@ use crate::components::*;
 use crate::model::*;
 use crate::reactive_list::*;
 use crate::square_api;
-// use crate::utils::OptionalMaybeSignal;
 
-use indexmap::IndexMap;
 use leptos::*;
 use leptos_icons::FaIcon::*;
 use rust_decimal_macros::dec;
@@ -245,13 +243,7 @@ pub fn NewBooking() -> impl IntoView {
 
     let validation = move || booking_contact().validate();
     let is_invalid = Signal::derive(move || validation().is_err());
-    let validation_error = move || {
-        if let Err(err) = validation() {
-            err.to_string()
-        } else {
-            "".to_string()
-        }
-    };
+
     // whether the call is pending
     let pending = link_action.pending();
 
