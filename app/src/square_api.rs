@@ -64,7 +64,7 @@ pub struct NewLineItem {
     pub quantity: String,
     pub catalog_object_id: String,
     pub catalog_version: i64,
-    pub dietary_requirements: HashMap<String, String>,
+    pub metadata: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

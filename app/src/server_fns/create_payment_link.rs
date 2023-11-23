@@ -73,6 +73,7 @@ pub async fn create_order(booking: NewBooking) -> Result<String, ServerFnError> 
             order: build_order(&booking),
         };
 
+        info!("req_payload {:?}", req);
         let req = build_request("orders").json(&req);
 
         info!("request: {:?}", req);
@@ -133,7 +134,7 @@ fn build_order(booking: &NewBooking) -> square_api::NewOrder {
             quantity: "1".to_string(),
             catalog_version, //todo: t.ticket_type.square_catalog_version,
             catalog_object_id: item_id.clone(), //todo: t.ticket_type.square_item_id.clone(),
-            dietary_requirements: HashMap::from([
+            metadata: HashMap::from([
                 ("gluten_free".to_string(), t.gluten_free.to_string()),
                 ("vegeterrible".to_string(), t.vegetarian.to_string()),
                 (
