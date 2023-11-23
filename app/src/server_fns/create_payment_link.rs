@@ -139,7 +139,11 @@ fn build_order(booking: &NewBooking) -> square_api::NewOrder {
                 ("vegeterrible".to_string(), t.vegetarian.to_string()),
                 (
                     "dietary_requirements".to_string(),
-                    t.dietary_requirements.clone(),
+                    if t.dietary_requirements.is_empty() {
+                        "none".to_string()
+                    } else {
+                        t.dietary_requirements.clone()
+                    },
                 ),
             ]),
         })

@@ -29,7 +29,7 @@ fn test_event() -> Event {
 }
 
 #[component]
-pub fn NewBooking() -> impl IntoView {
+pub fn NewBooking(without_payment: bool) -> impl IntoView {
     let event = store_value(test_event());
     let default_ticket_type = event().ticket_types.standard().unwrap();
 
@@ -115,6 +115,15 @@ pub fn NewBooking() -> impl IntoView {
         async move { create_order(new_booking).await }
     });
 
+    let create_order_pending = create_order.pending();
+    let create_order_value = create_order.value();
+    let create_order_text = move || match create_order_value() {
+        Some(Ok(v)) => format!("Order Created: id: {} ", v),
+        Some(Err(e)) => format!("Error Creating Order: {}", e.to_string()),
+        None => "Pending..".to_string(),
+    };
+    let (create_error_seen, set_create_error_seen) = create_signal::<usize>(0);
+
     let error_data = move || {
         link_action.value().with(|x| {
             if let Some(Err(err)) = x {
@@ -160,25 +169,28 @@ pub fn NewBooking() -> impl IntoView {
                 </IconButton>
               </p>
 
-              <IconButton
-                disabled=is_invalid
-                icon=FaPlusSolid
-                color=Color::Primary
-                on_click=move || link_action.dispatch(())
-              >
-                {move || { if pending() { "Generating Link..." } else { "Proceed to Payment" } }}
-              </IconButton>
-
-              <IconButton
-                disabled=is_invalid
-                icon=FaPlusSolid
-                color=Color::Primary
-                on_click=move || create_order.dispatch(())
-              >
-                {move || { if pending() { "Creating Order..." } else { "Create Order without Paying" } }}
-              </IconButton>
-
-              <p class="control"></p>
+              <p class="control">
+                <IconButton
+                  disabled=is_invalid
+                  icon=FaPlusSolid
+                  color=Color::Primary
+                  on_click=move || link_action.dispatch(())
+                >
+                  {move || { if pending() { "Generating Link..." } else { "Proceed to Payment" } }}
+                </IconButton>
+              </p>
+              <Show when=move || without_payment>
+                <p class="control">
+                  <IconButton
+                    disabled=is_invalid
+                    icon=FaPlusSolid
+                    color=Color::Primary
+                    on_click=move || create_order.dispatch(())
+                  >
+                    {move || { if pending() { "Creating Order..." } else { "Create Order without Paying" } }}
+                  </IconButton>
+                </p>
+              </Show>
             </div>
           </div>
         </div>
@@ -198,6 +210,21 @@ pub fn NewBooking() -> impl IntoView {
           </div>
           <div class="block">
             <pre style="white-space: pre-wrap;">{error_data}</pre>
+          </div>
+        </Modal>
+
+        <Modal
+          active=move || !create_order_pending() && create_order.version()() != create_error_seen()
+          close_requested=move || set_create_error_seen(create_order.version()())
+          title="Create Order Results"
+          footer=move || {
+              view! {}
+          }
+        >
+
+          <div class="block">Hi Sally</div>
+          <div class="block">
+            <pre style="white-space: pre-wrap;">{create_order_text}</pre>
           </div>
         </Modal>
 

@@ -85,7 +85,7 @@ pub struct Order {
     pub location_id: String,
     pub source: Source,
     pub line_items: Vec<LineItem>,
-    pub fulfillments: Vec<Fulfillment>,
+    pub fulfillments: Option<Vec<Fulfillment>>,
     pub net_amounts: NetAmounts,
     pub created_at: String,
     pub updated_at: String,

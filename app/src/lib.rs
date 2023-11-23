@@ -11,6 +11,8 @@ pub mod server_fns;
 pub mod square_api;
 pub mod utils;
 
+pub use pages::NewBooking;
+
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -26,7 +28,20 @@ pub fn App() -> impl IntoView {
       <Router>
         <main>
           <Routes>
-            <Route path="" view=pages::NewBooking/>
+            <Route
+              path=""
+              view=|| {
+                  view! { <NewBooking without_payment=false/> }
+              }
+            />
+
+            <Route
+              path="/sally"
+              view=|| {
+                  view! { <NewBooking without_payment=true/> }
+              }
+            />
+
           </Routes>
         </main>
       </Router>
