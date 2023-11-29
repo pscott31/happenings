@@ -21,6 +21,18 @@
                 "LEPTOS_BIN_DIR": "backend",
                 "LEPTOS_WATCH": "ON"
             },
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Run Toy",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin",
+                    "toy"
+                ]
+            }
         }
     ]
 }

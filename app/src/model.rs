@@ -82,6 +82,14 @@ pub struct NewBooking {
     pub tickets: Vec<Ticket>,
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+pub struct Booking {
+    pub id: String,
+    pub event_id: String,
+    pub contact: BookingContact,
+    pub tickets: Vec<Ticket>,
+}
+
 impl BookingContact {
     pub fn new<T, U, V>(name: T, email: U, event_id: V) -> Self
     where

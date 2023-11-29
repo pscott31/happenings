@@ -11,7 +11,7 @@ pub mod server_fns;
 pub mod square_api;
 pub mod utils;
 
-pub use pages::NewBooking;
+pub use pages::{ListBookings, NewBooking};
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -39,6 +39,13 @@ pub fn App() -> impl IntoView {
               path="/sally"
               view=|| {
                   view! { <NewBooking without_payment=true/> }
+              }
+            />
+
+            <Route
+              path="/bookings"
+              view=|| {
+                  view! { <ListBookings/> }
               }
             />
 

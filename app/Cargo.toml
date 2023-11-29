@@ -6,6 +6,7 @@
  # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+ square_api = { version = "0.1.0", path = "../../sw/square_api", optional = true }
  uuid = { version = "1.5.0", features = ["v4", "js"] }
  email_address = "0.2.4"
  reqwest = { version = "0.11.22", features = ["json"] }
@@ -37,6 +38,12 @@
 
 
 [features]
+ ssr = [
+  "leptos/ssr",
+  "leptos_meta/ssr",
+  "leptos_router/ssr",
+  "dep:leptos_axum",
+  "dep:square_api",
+ ]
  default = []
  hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
- ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:leptos_axum"]
