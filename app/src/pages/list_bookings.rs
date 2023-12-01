@@ -110,15 +110,22 @@ fn TicketsTab(bookings: Vec<Booking>) -> impl IntoView
         ticket: Ticket,
     }
 
+    let bookings = store_value(bookings);
+
     let tickets = move || {
-        bookings
+        bookings()
             .iter()
             .flat_map(|b| b.tickets.clone()) //todo better way than clone?
             .collect::<Vec<_>>()
     };
 
-    let b2 = bookings.clone();
-    let total_tickets = move || b2.clone().iter().map(|b| b.tickets.len()).sum::<usize>();
+    let total_tickets = move || {
+        bookings()
+            .clone()
+            .iter()
+            .map(|b| b.tickets.len())
+            .sum::<usize>()
+    };
     view! {
       <table class="table">
         <thead>
@@ -133,7 +140,7 @@ fn TicketsTab(bookings: Vec<Booking>) -> impl IntoView
         </thead>
         <tbody>
           <For
-            each=move || bookings.clone()
+            each=move || bookings()
             key=|b| b.id.clone()
             children=move |b| {
                 view! {
