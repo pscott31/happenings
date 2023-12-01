@@ -7,10 +7,10 @@
             "name": "Run Backend",
             "preLaunchTask": "cargo leptos build",
             "program": "${workspaceFolder}/target/debug/backend",
-            "console": "internalConsole",
-            "initCommands": [
-                "process handle SIGINT -p true --stop false"
-            ],
+            // "console": "internalConsole",
+            // "initCommands": [
+            //     "process handle SIGINT -p true --stop false"
+            // ],
             "env": {
                 "LEPTOS_OUTPUT_NAME": "happenings",
                 "LEPTOS_SITE_ROOT": "target/site",

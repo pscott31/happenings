@@ -131,8 +131,12 @@ dependencies = [
 name = "app"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "cfg-if",
+ "convert_case",
+ "dotenv",
  "email_address",
+ "futures",
  "http",
  "indexmap 2.1.0",
  "leptos",
@@ -307,6 +311,7 @@ dependencies = [
  "tokio",
  "tower",
  "tower-http",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1102,7 +1107,7 @@ dependencies = [
  "aho-corasick",
  "bstr",
  "log",
- "regex-automata",
+ "regex-automata 0.4.3",
  "regex-syntax 0.8.2",
 ]
 
@@ -1452,7 +1457,7 @@ dependencies = [
  "globset",
  "log",
  "memchr",
- "regex-automata",
+ "regex-automata 0.4.3",
  "same-file",
  "walkdir",
  "winapi-util",
@@ -1985,6 +1990,15 @@ dependencies = [
  "proc-macro-utils",
  "proc-macro2",
  "quote",
+]
+
+[[package]]
+name = "matchers"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
+dependencies = [
+ "regex-automata 0.1.10",
 ]
 
 [[package]]
@@ -2643,8 +2657,17 @@ checksum = "380b951a9c5e80ddfd6136919eef32310721aa4aacd4889a8d39124b026ab343"
 dependencies = [
  "aho-corasick",
  "memchr",
- "regex-automata",
+ "regex-automata 0.4.3",
  "regex-syntax 0.8.2",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
+dependencies = [
+ "regex-syntax 0.6.29",
 ]
 
 [[package]]
@@ -3700,7 +3723,9 @@ checksum = "b6bc1c9ce2b5135ac7f93c72918fc37feb872bdc6a5533a8b85eb4b86bfdae52"
 name = "toy"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "app",
+ "convert_case",
  "dotenv",
  "futures",
  "leptos",
@@ -3710,6 +3735,8 @@ dependencies = [
  "rust_decimal_macros",
  "square_api",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3772,10 +3799,14 @@ version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad0f048c97dbd9faa9b7df56362b8ebcaa52adb06b498c050d2f4e32f90a7a8b"
 dependencies = [
+ "matchers",
  "nu-ansi-term",
+ "once_cell",
+ "regex",
  "sharded-slab",
  "smallvec",
  "thread_local",
+ "tracing",
  "tracing-core",
  "tracing-log",
 ]

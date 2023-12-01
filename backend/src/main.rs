@@ -6,9 +6,9 @@ use fileserv::file_and_error_handler;
 use futures_util::StreamExt;
 use leptos::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
-use log::*;
 use nix::{libc, sys::signal::Signal};
 use tokio::sync::mpsc;
+use tracing::*;
 
 pub mod fileserv;
 
@@ -16,11 +16,20 @@ pub mod fileserv;
 async fn main() {
     // pretty_env_logger::init();
     dotenv().ok();
-    pretty_env_logger::formatted_builder()
-        .filter(None, LevelFilter::Warn)
-        .filter(Some("backend"), LevelFilter::Debug)
-        .filter(Some("app"), LevelFilter::Debug)
+    // pretty_env_logger::formatted_builder()
+    //     .filter(None, LevelFilter::Warn)
+    //     .filter(Some("backend"), LevelFilter::Debug)
+    //     .filter(Some("app"), LevelFilter::Debug)
+    //     .init();
+    let filter = tracing_subscriber::EnvFilter::builder()
+        .with_default_directive(Level::WARN.into()) // Default level for all modules
+        .parse_lossy("backend=debug,app=debug");
+
+    tracing_subscriber::fmt()
+        .with_max_level(Level::TRACE)
+        .with_env_filter(filter)
         .init();
+
     info!("Off we go!");
 
     let conf = get_configuration(None).await.unwrap();
@@ -35,7 +44,7 @@ async fn main() {
         .fallback(file_and_error_handler)
         .with_state(leptos_options);
 
-    log::info!("listening on http://{}", &addr);
+    info!("listening on http://{}", &addr);
 
     // Channel for graceful shutdown
     let (tx, mut rx) = mpsc::channel(100);
@@ -62,10 +71,10 @@ async fn main() {
             }
         });
 
-    log::info!("serving!");
+    info!("serving!");
     if let Err(e) = server.await {
-        log::error!("server error: {}", e);
+        error!("server error: {}", e);
     }
-    log::info!("graceful shutdown complete");
+    info!("graceful shutdown complete");
 }
 
