@@ -88,6 +88,15 @@ pub struct Booking {
     pub event_id: String,
     pub contact: BookingContact,
     pub tickets: Vec<Ticket>,
+    pub payment: BookingPayment,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub enum BookingPayment {
+    #[default]
+    NotPaid,
+    Cash(Decimal),
+    Card(Decimal),
 }
 
 impl BookingContact {

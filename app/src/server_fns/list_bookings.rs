@@ -111,11 +111,26 @@ async fn booking_from_order(
         dietary_requirements: line_item.metadata_or_default("dietary_requirements"),
     });
 
+    let payment = match order.tenders.as_ref() {
+        Some(tenders) => BookingPayment::Card(
+            tenders
+                .iter()
+                .map(|t| &t.amount_money)
+                .flatten()
+                .map(|m| m.amount)
+                .flatten()
+                .map(|a| Decimal::new(a, 2))
+                .sum(),
+        ),
+        None => BookingPayment::NotPaid,
+    };
+
     Booking {
         id: order.id.clone().unwrap_or_default(),
         event_id: "".to_string(),
         contact: contact.clone(),
         tickets: tickets.collect(),
+        payment: payment,
     }
 }
 

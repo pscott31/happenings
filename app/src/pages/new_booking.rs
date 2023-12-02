@@ -162,17 +162,17 @@ pub fn NewBooking(without_payment: bool) -> impl IntoView {
             </Field>
             {badgers}
 
-            <div class="field is-grouped">
+            <div class="field is-grouped is-flex-wrap-wrap">
               <p class="control">
                 <IconButton icon=FaPlusSolid color=Color::Secondary on_click=add_ticket>
-                  "Add another ticket to your booking"
+                  "Add Another Ticket"
                 </IconButton>
               </p>
 
               <p class="control">
                 <IconButton
                   disabled=is_invalid
-                  icon=FaPlusSolid
+                  icon=FaBasketShoppingSolid
                   color=Color::Primary
                   on_click=move || link_action.dispatch(())
                 >
@@ -183,7 +183,7 @@ pub fn NewBooking(without_payment: bool) -> impl IntoView {
                 <p class="control">
                   <IconButton
                     disabled=is_invalid
-                    icon=FaPlusSolid
+                    icon=FaBasketShoppingSolid
                     color=Color::Primary
                     on_click=move || create_order.dispatch(())
                   >
