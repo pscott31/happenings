@@ -89,7 +89,7 @@ async fn booking_from_order(
     client: Arc<square_api::SquareApiClient>,
     order: &square_api::model::Order,
 ) -> Booking {
-    let contact = contact_from_order(client, &order).await;
+    let contact = contact_from_order(client, order).await;
 
     let tickets = order.line_items.iter().flatten().map(|line_item| Ticket {
         booking_id: order.id.clone().unwrap_or_default(),
@@ -111,19 +111,20 @@ async fn booking_from_order(
         dietary_requirements: line_item.metadata_or_default("dietary_requirements"),
     });
 
-    let payment = match order.tenders.as_ref() {
-        Some(tenders) => BookingPayment::Card(
-            tenders
-                .iter()
-                .map(|t| &t.amount_money)
-                .flatten()
-                .map(|m| m.amount)
-                .flatten()
-                .map(|a| Decimal::new(a, 2))
-                .sum(),
-        ),
-        None => BookingPayment::NotPaid,
-    };
+    let payment =
+        match order.tenders.as_ref() {
+            Some(tenders) => BookingPayment::Card(
+                tenders
+                    .iter()
+                    .map(|t| &t.amount_money)
+                    .flatten()
+                    .map(|m| m.amount)
+                    .flatten()
+                    .map(|a| Decimal::new(a, 2))
+                    .sum(),
+            ),
+            None => BookingPayment::NotPaid,
+        };
 
     Booking {
         id: order.id.clone().unwrap_or_default(),

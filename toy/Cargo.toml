@@ -1,25 +1,27 @@
 [package]
- name = "toy"
- version = "0.1.0"
- edition = "2021"
+name = "toy"
+version = "0.1.0"
+edition = "2021"
 
- # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
- #  square_api = { version = "0.1.0", path = "../../sw/square_api" }
- square_api = { version = "0.1.0", git = "https://github.com/pscott31/square_api" }
- app = { path = "../app", default-features = false, features = ["ssr"] }
- tokio.workspace = true
- leptos.workspace = true
- log.workspace = true
- rust_decimal = "1.33.0"
- rust_decimal_macros = "1.33.0"
- dotenv = "0.15.0"
- futures = "0.3.29"
- pretty_env_logger.workspace = true
- convert_case = "0.6.0"
- anyhow = "1.0.75"
- tracing = "0.1.40"
- tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
- mail-send = "0.4.2"
+#  square_api = { version = "0.1.0", path = "../../sw/square_api" }
+square_api = { version = "0.1.0", git = "https://github.com/pscott31/square_api" }
+app = { path = "../app", default-features = false, features = ["ssr"] }
+tokio.workspace = true
+leptos.workspace = true
+log.workspace = true
+rust_decimal = "1.33.0"
+rust_decimal_macros = "1.33.0"
+dotenv = "0.15.0"
+futures = "0.3.29"
+pretty_env_logger.workspace = true
+convert_case = "0.6.0"
+anyhow = "1.0.75"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+mail-send = "0.4.2"
 uuid = "1.6.1"
+css-inline = "0.11.0"
+pluralizer = "0.4.0"

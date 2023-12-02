@@ -1,87 +1,122 @@
-use anyhow::{anyhow, Result};
+use std::env;
+
+use anyhow::Result;
 use app::model::*;
-use convert_case::{Case, Casing};
+use css_inline::CSSInliner;
 use dotenv::dotenv;
-use futures::stream::{self, StreamExt};
 use leptos::*;
 use mail_send::{mail_builder::MessageBuilder, SmtpClientBuilder};
+use pluralizer::pluralize;
 use rust_decimal::Decimal;
-use square_api::model::{SearchOrdersFilter, SearchOrdersQuery, SearchOrdersSourceFilter, SearchOrdersStateFilter};
-use std::{env, str::FromStr, sync::Arc};
 use tracing::*;
-use uuid::Uuid;
 
-// #[component]
-pub fn BookingSummary(booking: Booking) -> impl IntoView
-where
-{
-    let tickets = move || {
-        booking
-            .tickets
-            .iter()
-            .cloned()
-            .enumerate()
-            .collect::<Vec<_>>()
-    };
+struct EmailConfig {
+    host: String,
+    port: u16,
+    user: String,
+    password: String,
+}
 
-    view! {
-      <section>
-        <div>
-          <h2 class="title">Booking Summary</h2>
-          <For each=tickets key=|_| Uuid::new_v4().to_string() let:item>
-            <p>yay</p>
-          // <p>{move || item.0.to_string()}</p>
-          // <TicketSummary ticket=item.1/>
-          </For>
-        </div>
-      </section>
+impl Default for EmailConfig {
+    fn default() -> Self {
+        EmailConfig {
+            host: env::var("EMAIL_HOST").expect("EMAIL_HOST to be in environment"),
+            user: env::var("EMAIL_USER").expect("EMAIL_USER to be in environment"),
+            password: env::var("EMAIL_PASSWORD").expect("EMAIL_PASSWORD to be in environment"),
+            port: env::var("EMAIL_PORT")
+                .expect("EMAIL_PORT to be in environment")
+                .parse()
+                .expect("email port number to be u16"),
+        }
     }
 }
 
-// #[component]
-pub fn TicketSummary(ticket: Ticket) -> impl IntoView {
-    view! {
-      <p>{move || ticket.ticket_type.name.clone()}</p>
-      <p>{move || ticket.vegetarian}</p>
-    }
-}
+pub async fn email_booking(booking: Booking) -> Result<(), ServerFnError> {
+    let cfg = EmailConfig::default();
+    let tickets = booking.tickets.clone();
 
-pub async fn email_booking(b: Booking) -> Result<(), ServerFnError> {
-    let tv = b
-        .tickets
-        .iter()
-        .map(move |ticket| {
-            view! {
-              <p>{ticket.ticket_type.name.clone()}</p>
-              <p>Vegetarian? {ticket.vegetarian}</p>
-              <p>Gluten Free? {ticket.gluten_free}</p>
-              <p>Other Dietary Requirements? {ticket.dietary_requirements}</p>
-            }
-            .into_view()
-        })
-        .collect::<Vec<_>>();
-
-    let v = view! {
-      <h1>New Booking from: {b.contact.name.clone()}</h1>
-      <p>Email: {b.contact.email.clone()}</p>
-      <p>Phone: {b.contact.phone_no.clone()}</p>
-      <h2>Tickets</h2>
-      {tv}
+    let tickets_table = view! {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Ticket Type</th>
+            <th>Vegetarian</th>
+            <th>Gluten Free</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tickets
+              .iter()
+              .map(|t| {
+                  view! {
+                    <tr>
+                      <td>{t.ticket_type.name.clone()}</td>
+                      <td>{if t.vegetarian { "yes" } else { "" }}</td>
+                      <td>{if t.gluten_free { "yes" } else { "" }}</td>
+                      <td>
+                        {if t.dietary_requirements != "none" { t.dietary_requirements.clone() } else { "".to_string() }}
+                      </td>
+                    </tr>
+                  }
+              })
+              .collect_view()}
+        </tbody>
+      </table>
     };
 
-    let m = leptos::ssr::render_to_string(|| v);
+    let booking_table = view! {
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>EMail</th>
+            <th>Phone</th>
+          </tr>
+        </thead>
+        <tbody>
+          <td>{booking.contact.name.clone()}</td>
+          <td>{booking.contact.email.clone()}</td>
+          <td>{booking.contact.phone_no.clone()}</td>
+        </tbody>
+      </table>
+    };
 
-    info!("{:?}", m);
+    let email_view =
+        view! {
+          <div class="box">
+            <div class="block">
+              <h2 class="subtitle">Booking By</h2>
+              {booking_table}
+            </div>
+            <div class="block">
+              <h2 class="subtitle">Tickets</h2>
+              {tickets_table}
+            </div>
+          </div>
+        };
+
+    let rendered = leptos::ssr::render_to_string(|| email_view);
+    let css = include_str!("../../style/bulma.css");
+    let styled = CSSInliner::options()
+        .extra_css(Some(css.into()))
+        .build()
+        .inline(rendered.as_ref())?;
+
     let message = MessageBuilder::new()
         .from(("Philip Scott", "safetyfirstphil@gmail.comewhere"))
         .to(vec![("Philip Scott", "phil@safetyphil.com")])
-        .subject("Hi!")
-        .html_body(m)
-        .text_body("Hello world!");
+        .subject(format!(
+            "Xmas Dinner: {} booked by {}",
+            pluralize("ticket", tickets.len().try_into()?, true),
+            booking.contact.name.clone(),
+        ))
+        .html_body(styled)
+        .text_body("Switch to HTML View");
 
-    SmtpClientBuilder::new("smtp.gmail.com", 587)
+    SmtpClientBuilder::new(cfg.host, cfg.port)
         .implicit_tls(false)
-        .credentials(("safetyfirstphil@gmail.com", "lmrn ivej ahim ncti"))
+        .credentials((cfg.user, cfg.password))
         .connect()
         .await?
         .send(message)
@@ -92,7 +127,6 @@ pub async fn email_booking(b: Booking) -> Result<(), ServerFnError> {
 
 #[tokio::main]
 async fn main() {
-    println!("\n\nOFF WE GO!");
     dotenv().ok();
 
     let filter = tracing_subscriber::EnvFilter::builder()
@@ -134,7 +168,7 @@ async fn main() {
 
     let ret = email_booking(b).await;
     if let Err(e) = ret {
-        println!("Error: {}", e.to_string());
+        println!("Error: {}", e);
     }
 }
 
