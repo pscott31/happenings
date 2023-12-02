@@ -4,178 +4,90 @@ use convert_case::{Case, Casing};
 use dotenv::dotenv;
 use futures::stream::{self, StreamExt};
 use leptos::*;
+use mail_send::{mail_builder::MessageBuilder, SmtpClientBuilder};
 use rust_decimal::Decimal;
 use square_api::model::{SearchOrdersFilter, SearchOrdersQuery, SearchOrdersSourceFilter, SearchOrdersStateFilter};
 use std::{env, str::FromStr, sync::Arc};
 use tracing::*;
+use uuid::Uuid;
 
-struct Config {
-    endpoint: String,
-    api_key: String,
-    location_id: String,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        let endpoint = format!(
-            "https://{}",
-            env::var("SQUARE_ENDPOINT").expect("SQUARE_ENDPOINT to be in envrionment")
-        );
-        Config {
-            endpoint,
-            api_key: env::var("SQUARE_API_KEY").expect("SQUARE_API_KEY to be in environment"),
-            location_id: env::var("SQUARE_LOCATION_ID")
-                .expect("SQUARE_LOCATION_ID to be in environment"),
-        }
-    }
-}
-
-fn get_client(cfg: &Config) -> Arc<square_api::SquareApiClient> {
-    let mut client = square_api::SquareApiClient::new(&cfg.endpoint);
-    client.client = client.client.default_header(
-        "Authorization".to_string(),
-        format!("Bearer {}", cfg.api_key),
-    );
-    Arc::new(client)
-}
-
-async fn contact_from_order(
-    client: Arc<square_api::SquareApiClient>,
-    order: &square_api::model::Order,
-) -> BookingContact {
-    let id = match order.id {
-        Some(ref id) => id.clone(),
-        None => {
-            warn!("No order ID on order?");
-            return BookingContact::default();
-        }
+// #[component]
+pub fn BookingSummary(booking: Booking) -> impl IntoView
+where
+{
+    let tickets = move || {
+        booking
+            .tickets
+            .iter()
+            .cloned()
+            .enumerate()
+            .collect::<Vec<_>>()
     };
 
-    let maybe_customer = client
-        .retrieve_customer(&id)
-        .await
-        .map_err(|e| anyhow!("customer search failed: {}", e))
-        .and_then(|resp| resp.customer.ok_or(anyhow!("no customer in response")))
-        .inspect_err(|e| warn!("error fetching customer {} {}", id, e.to_string()));
+    view! {
+      <section>
+        <div>
+          <h2 class="title">Booking Summary</h2>
+          <For each=tickets key=|_| Uuid::new_v4().to_string() let:item>
+            <p>yay</p>
+          // <p>{move || item.0.to_string()}</p>
+          // <TicketSummary ticket=item.1/>
+          </For>
+        </div>
+      </section>
+    }
+}
 
-    let customer = match maybe_customer {
-        Ok(c) => c,
-        Err(_) => {
-            return BookingContact {
-                id: id.clone(),
-                name: id.to_case(Case::Title),
-                ..Default::default()
-            };
-        }
+// #[component]
+pub fn TicketSummary(ticket: Ticket) -> impl IntoView {
+    view! {
+      <p>{move || ticket.ticket_type.name.clone()}</p>
+      <p>{move || ticket.vegetarian}</p>
+    }
+}
+
+pub async fn email_booking(b: Booking) -> Result<(), ServerFnError> {
+    let tv = b
+        .tickets
+        .iter()
+        .map(move |ticket| {
+            view! {
+              <p>{ticket.ticket_type.name.clone()}</p>
+              <p>Vegetarian? {ticket.vegetarian}</p>
+              <p>Gluten Free? {ticket.gluten_free}</p>
+              <p>Other Dietary Requirements? {ticket.dietary_requirements}</p>
+            }
+            .into_view()
+        })
+        .collect::<Vec<_>>();
+
+    let v = view! {
+      <h1>New Booking from: {b.contact.name.clone()}</h1>
+      <p>Email: {b.contact.email.clone()}</p>
+      <p>Phone: {b.contact.phone_no.clone()}</p>
+      <h2>Tickets</h2>
+      {tv}
     };
 
-    BookingContact {
-        id: customer.id.unwrap_or_default(),
-        name: format!(
-            "{} {}",
-            customer.given_name.unwrap_or_default(),
-            customer.family_name.unwrap_or_default()
-        ),
-        email: customer.email_address.unwrap_or_default(),
-        phone_no: customer.phone_number.unwrap_or_default(),
-        event_id: "".to_string(),
-    }
-}
+    let m = leptos::ssr::render_to_string(|| v);
 
-async fn booking_from_order(
-    client: Arc<square_api::SquareApiClient>,
-    order: &square_api::model::Order,
-) -> Booking {
-    let contact = contact_from_order(client, &order).await;
+    info!("{:?}", m);
+    let message = MessageBuilder::new()
+        .from(("Philip Scott", "safetyfirstphil@gmail.comewhere"))
+        .to(vec![("Philip Scott", "phil@safetyphil.com")])
+        .subject("Hi!")
+        .html_body(m)
+        .text_body("Hello world!");
 
-    let tickets = order.line_items.iter().flatten().map(|line_item| Ticket {
-        booking_id: order.id.clone().unwrap_or_default(),
-        ticket_type: TicketType {
-            name: line_item.variation_name.clone().unwrap_or_default(),
-            price: Decimal::new(
-                line_item
-                    .base_price_money
-                    .as_ref()
-                    .and_then(|bp| bp.amount)
-                    .unwrap_or_default(),
-                2,
-            ),
-            square_item_id: line_item.catalog_object_id.clone().unwrap_or_default(),
-            square_catalog_version: line_item.catalog_version.unwrap_or_default(),
-        },
-        vegetarian: line_item.metadata_or_default("vegeterrible"),
-        gluten_free: line_item.metadata_or_default("gluten_free"),
-        dietary_requirements: line_item.metadata_or_default("dietary_requirements"),
-    });
-
-    Booking {
-        id: order.id.clone().unwrap_or_default(),
-        event_id: "".to_string(),
-        contact: contact.clone(),
-        tickets: tickets.collect(),
-    }
-}
-
-trait ExtractableMetadata {
-    fn metadata_or_default<T>(&self, key: &str) -> T
-    where
-        T: Default + FromStr,
-        <T as FromStr>::Err: std::fmt::Debug;
-}
-
-impl ExtractableMetadata for square_api::model::OrderLineItem {
-    fn metadata_or_default<T>(&self, key: &str) -> T
-    where
-        T: Default + FromStr,
-        <T as FromStr>::Err: std::fmt::Debug,
-    {
-        self.metadata
-            .as_ref()
-            .ok_or("no metadata".to_string())
-            .and_then(|md| md.get(key).ok_or("key not present".to_string()))
-            .and_then(|o| o.as_str().ok_or("value not string".to_string()))
-            .and_then(|o| o.parse::<T>().map_err(|e| format!("parse failed: {:?}", e)))
-            .unwrap_or_else(|e| {
-                warn!(key = key, error = e, "error parsing metadata");
-                T::default()
-            })
-    }
-}
-
-pub async fn list_bookings() -> Result<Vec<Booking>, ServerFnError> {
-    info!("listing bookings");
-    let cfg = Config::default();
-    let client = get_client(&cfg);
-
-    let query = SearchOrdersQuery {
-        filter: Some(SearchOrdersFilter {
-            state_filter: Some(SearchOrdersStateFilter {
-                states: vec!["OPEN".to_string()],
-            }),
-            source_filter: Some(SearchOrdersSourceFilter {
-                source_names: Some(vec!["StukeleyHappenings".to_string()]),
-            }),
-            ..Default::default()
-        }),
-        ..Default::default()
-    };
-
-    let resp = client
-        .search_orders()
-        .location_ids(vec![cfg.location_id.clone()])
-        .query(query.clone())
+    SmtpClientBuilder::new("smtp.gmail.com", 587)
+        .implicit_tls(false)
+        .credentials(("safetyfirstphil@gmail.com", "lmrn ivej ahim ncti"))
+        .connect()
+        .await?
+        .send(message)
         .await?;
 
-    let bookings = stream::iter(resp.orders.unwrap_or_default())
-        .map(|order| {
-            let client = client.clone();
-            async move { booking_from_order(client, &order).await }
-        })
-        .buffered(10)
-        .collect::<Vec<_>>()
-        .await;
-
-    Ok(bookings)
+    Ok(())
 }
 
 #[tokio::main]
@@ -183,25 +95,44 @@ async fn main() {
     println!("\n\nOFF WE GO!");
     dotenv().ok();
 
-    // pretty_env_logger::formatted_builder()
-    //     .filter(None, log::LevelFilter::Warn)
-    //     .filter(Some("toy"), log::LevelFilter::Debug)
-    //     .init();
-
-    // let filter = tracing_subscriber::EnvFilter::builder()
-    //     .with_default_directive(Level::WARN.into()) // Default level for all modules
-    //     .parse_lossy("toy=debug");
-
-    // tracing_subscriber::fmt()
-    //     .with_max_level(Level::TRACE)
-    //     .with_env_filter(filter)
-    //     .init();
+    let filter = tracing_subscriber::EnvFilter::builder()
+        .with_default_directive(Level::WARN.into()) // Default level for all modules
+        .parse_lossy("toy=debug");
 
     tracing_subscriber::fmt()
         .with_max_level(Level::TRACE)
+        .with_env_filter(filter)
         .init();
 
-    let ret = list_bookings().await;
+    let test_ticket = Ticket {
+        booking_id: "abc".to_string(),
+        vegetarian: true,
+        gluten_free: false,
+        dietary_requirements: "only cheese".to_string(),
+
+        ticket_type: TicketType {
+            name: "Adult".to_string(),
+            price: Decimal::new(15, 2),
+            square_item_id: "foo".to_string(),
+            square_catalog_version: 42,
+        },
+    };
+
+    let b = Booking {
+        id: "fancyid".to_string(),
+        event_id: "awesomevent".to_string(),
+        contact: BookingContact {
+            id: "contactid".to_string(),
+            name: "The Rock".to_string(),
+            email: "the@rock.com".to_string(),
+            event_id: "fancyid".to_string(),
+            phone_no: "123456".to_string(),
+        },
+        payment: BookingPayment::NotPaid,
+        tickets: vec![test_ticket],
+    };
+
+    let ret = email_booking(b).await;
     if let Err(e) = ret {
         println!("Error: {}", e.to_string());
     }
