@@ -1,6 +1,7 @@
 use crate::model::*;
 
 use leptos::*;
+use square_api::model::SearchOrdersSourceFilter;
 use std::env;
 
 cfg_if::cfg_if! {
@@ -181,9 +182,9 @@ pub async fn list_bookings() -> Result<Vec<Booking>, ServerFnError> {
             state_filter: Some(SearchOrdersStateFilter {
                 states: vec!["OPEN".to_string()],
             }),
-            // source_filter: Some(SearchOrdersSourceFilter {
-            //     source_names: Some(vec!["StukeleyHappenings".to_string()]),
-            // }),
+            source_filter: Some(SearchOrdersSourceFilter {
+                source_names: Some(vec!["StukeleyHappenings".to_string()]),
+            }),
             ..Default::default()
         }),
         ..Default::default()
