@@ -119,7 +119,7 @@ pub fn NewBooking(without_payment: bool) -> impl IntoView {
     let create_order_value = create_order.value();
     let create_order_text = move || match create_order_value() {
         Some(Ok(v)) => format!("Order Created: id: {} ", v),
-        Some(Err(e)) => format!("Error Creating Order: {}", e.to_string()),
+        Some(Err(e)) => format!("Error Creating Order: {}", e),
         None => "Pending..".to_string(),
     };
     let (create_error_seen, set_create_error_seen) = create_signal::<usize>(0);

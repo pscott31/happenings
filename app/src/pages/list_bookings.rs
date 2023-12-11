@@ -157,7 +157,7 @@ fn TicketsTab(bookings: Vec<Booking>) -> impl IntoView {
         </thead>
         <tbody>
           <For
-            each=move || tickets()
+            each=tickets
             key=|(_, _)| Uuid::new_v4()
             children=move |(b, t)| {
                 view! {

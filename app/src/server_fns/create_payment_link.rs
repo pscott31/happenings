@@ -15,52 +15,48 @@ use std::collections::HashMap;
 pub async fn create_payment_link(booking: NewBooking) -> Result<String, ServerFnError> {
     info!("creating payment link for booking: {:?}", booking);
 
-    let resp = {
-        let phone_number = booking
+    let phone_number =
+        booking
             .contact
             .phone_number()?
             .format()
             .mode(phonenumber::Mode::E164)
             .to_string();
 
-        let req = square_api::CreatePaymentLinkRequest {
-            idempotency_key: uuid::Uuid::new_v4().to_string(),
-            description: "Little Stukeley Christmas Dinner".to_string(),
-            order: build_order(&booking),
-            checkout_options: Some(square_api::CheckoutOptions {
-                allow_tipping: false,
-                ask_for_shipping_address: false,
-                enable_coupon: false,
-                enable_loyalty: false,
-            }),
-            pre_populated_data: Some(square_api::PrePopulatedData {
-                buyer_address: None,
-                buyer_email: Some(booking.contact.email),
-                buyer_phone_number: Some(phone_number),
-            }),
-        };
+    let req = square_api::CreatePaymentLinkRequest {
+        idempotency_key: uuid::Uuid::new_v4().to_string(),
+        description: "Little Stukeley Christmas Dinner".to_string(),
+        order: build_order(&booking),
+        checkout_options: Some(square_api::CheckoutOptions {
+            allow_tipping: false,
+            ask_for_shipping_address: false,
+            enable_coupon: false,
+            enable_loyalty: false,
+            redirect_url: "".to_string(),
+        }),
+        pre_populated_data: Some(square_api::PrePopulatedData {
+            buyer_address: None,
+            buyer_email: Some(booking.contact.email),
+            buyer_phone_number: Some(phone_number),
+        }),
+    };
 
-        let req = build_request("online-checkout/payment-links").json(&req);
+    let req = build_request("online-checkout/payment-links").json(&req);
 
-        info!("request: {:?}", req);
+    info!("request: {:?}", req);
 
-        let res = req.send().await.map_err(|e| {
-            warn!("failed to call square api: {}", e);
-            e
-        })?;
+    let res = req.send().await.map_err(|e| {
+        warn!("failed to call square api: {}", e);
+        e
+    })?;
 
-        if res.status().is_success() {
-            let parsed_res = res.json::<square_api::Welcome>().await?;
-            return Ok(parsed_res.payment_link.long_url);
-        }
-
+    if !res.status().is_success() {
         let error_body = res.text().await?;
-        Err(ServerFnError::ServerError(error_body))
-    };
-    if let Err(e) = resp.as_ref() {
-        warn!("error generating payment link: {}", e.to_string())
-    };
-    resp
+        return Err(ServerFnError::ServerError(error_body));
+    }
+
+    let parsed_res = res.json::<square_api::Welcome>().await?;
+    return Ok(parsed_res.payment_link.long_url);
 }
 
 #[server(CreateOrder, "/api")]
@@ -127,27 +123,28 @@ fn build_order(booking: &NewBooking) -> square_api::NewOrder {
     sanitizer.trim().to_snake_case();
     let customer_id = sanitizer.get();
 
-    let line_items = booking
-        .tickets
-        .iter()
-        .map(|t| square_api::NewLineItem {
-            quantity: "1".to_string(),
-            catalog_version, //todo: t.ticket_type.square_catalog_version,
-            catalog_object_id: item_id.clone(), //todo: t.ticket_type.square_item_id.clone(),
-            metadata: HashMap::from([
-                ("gluten_free".to_string(), t.gluten_free.to_string()),
-                ("vegeterrible".to_string(), t.vegetarian.to_string()),
-                (
-                    "dietary_requirements".to_string(),
-                    if t.dietary_requirements.is_empty() {
-                        "none".to_string()
-                    } else {
-                        t.dietary_requirements.clone()
-                    },
-                ),
-            ]),
-        })
-        .collect::<Vec<_>>();
+    let line_items =
+        booking
+            .tickets
+            .iter()
+            .map(|t| square_api::NewLineItem {
+                quantity: "1".to_string(),
+                catalog_version, //todo: t.ticket_type.square_catalog_version,
+                catalog_object_id: item_id.clone(), //todo: t.ticket_type.square_item_id.clone(),
+                metadata: HashMap::from([
+                    ("gluten_free".to_string(), t.gluten_free.to_string()),
+                    ("vegeterrible".to_string(), t.vegetarian.to_string()),
+                    (
+                        "dietary_requirements".to_string(),
+                        if t.dietary_requirements.is_empty() {
+                            "none".to_string()
+                        } else {
+                            t.dietary_requirements.clone()
+                        },
+                    ),
+                ]),
+            })
+            .collect::<Vec<_>>();
 
     square_api::NewOrder {
         customer_id: Some(customer_id),

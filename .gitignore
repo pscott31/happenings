@@ -2,3 +2,6 @@ dist
 target
 .env
 .VSCodeCounter
+.env-sandbox
+.env-prod
+.env

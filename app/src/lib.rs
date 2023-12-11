@@ -11,7 +11,7 @@ pub mod server_fns;
 pub mod square_api;
 pub mod utils;
 
-pub use pages::{ListBookings, NewBooking};
+pub use pages::{EmailBooking, ListBookings, NewBooking};
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -46,6 +46,13 @@ pub fn App() -> impl IntoView {
               path="/bookings"
               view=|| {
                   view! { <ListBookings/> }
+              }
+            />
+
+            <Route
+              path="/email-booking"
+              view=|| {
+                  view! { <EmailBooking/> }
               }
             />
 

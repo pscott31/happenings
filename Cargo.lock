@@ -93,8 +93,10 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "cfg-if",
  "convert_case 0.6.0",
+ "css-inline",
  "dotenv",
  "email_address",
  "futures",
@@ -106,7 +108,9 @@ dependencies = [
  "leptos_meta",
  "leptos_router",
  "log",
+ "mail-send",
  "phonenumber",
+ "pluralizer",
  "reqwest",
  "rust_decimal",
  "rust_decimal_macros",
