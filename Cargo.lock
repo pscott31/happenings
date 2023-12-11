@@ -118,6 +118,8 @@ dependencies = [
  "serde",
  "square_api",
  "thiserror",
+ "tracing",
+ "tracing-subscriber",
  "uuid",
  "validator",
 ]
