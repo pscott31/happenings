@@ -1,13 +1,12 @@
 use crate::model::*;
 
 use leptos::*;
-use square_api::model::SearchOrdersSourceFilter;
 use std::env;
 
 cfg_if::cfg_if! {
 if #[cfg(feature = "ssr")] {
     use rust_decimal::Decimal;
-    use square_api::model::{SearchOrdersFilter, SearchOrdersQuery, SearchOrdersStateFilter};
+    use square_api::model::{SearchOrdersFilter, SearchOrdersQuery, SearchOrdersStateFilter, SearchOrdersSourceFilter};
     use std::{str::FromStr, sync::Arc};
     use tracing::*;
     use anyhow::{anyhow, Result};
